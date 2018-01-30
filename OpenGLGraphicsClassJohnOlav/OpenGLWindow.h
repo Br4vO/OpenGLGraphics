@@ -28,6 +28,7 @@ private:
 	static void Display();
 	static void Keyboard(unsigned char key, int x, int y);
 	static void Mouse(int button, int state, int x, int y);
+	static void MouseMotion(int x, int y);
 	static void SpecialInput(int key, int x, int y);
 	static void Idle();
 

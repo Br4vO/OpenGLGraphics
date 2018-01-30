@@ -11,7 +11,7 @@ int main(int argc, char* argv[])
 	glutCreateWindow("John's Window");
 	glewInit();
 
-	OpenGLWindow* OpenGL = new OpenGLWindow("OBJFiles\\teapot.obj");
+	OpenGLWindow* OpenGL = new OpenGLWindow(argv[1]);
 
 	glutMainLoop();
 

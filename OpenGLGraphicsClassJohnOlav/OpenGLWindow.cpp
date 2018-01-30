@@ -17,6 +17,8 @@ static cy::Point2f previousMousePosition;
 static float mouseZ;
 static float mouseX;
 static float mouseY;
+static bool leftMouseDown;
+static bool rightMouseDown;
 
 OpenGLWindow::OpenGLWindow(const char * filename)
 {
@@ -36,6 +38,7 @@ void OpenGLWindow::Init(const char * filename)
 	glutDisplayFunc(Display);
 	glutKeyboardFunc(Keyboard);
 	glutMouseFunc(Mouse);
+	glutMotionFunc(MouseMotion);
 	glutSpecialFunc(SpecialInput);
 	glutIdleFunc(Idle);
 
@@ -155,15 +158,12 @@ void OpenGLWindow::Mouse(int button, int state, int x, int y)
 	{
 		if (state == GLUT_UP)
 		{
+			leftMouseDown = false;
 
-			const double xDiff = previousMousePosition.x - x;
-			const double yDiff = previousMousePosition.y - y;
-			mouseX += xDiff * 0.001;
-			mouseY += yDiff * 0.001;
 		}
 		else if (state == GLUT_DOWN)
 		{
-
+			leftMouseDown = true;
 			previousMousePosition.Set(x, y);
 		}
 	}
@@ -171,15 +171,33 @@ void OpenGLWindow::Mouse(int button, int state, int x, int y)
 	{
 		if (state == GLUT_UP)
 		{
-			const double yDiff = previousMousePosition.y - y;
-			mouseZ += (yDiff * 0.001);
+			rightMouseDown = false;
 			
 		}
 		else if (state == GLUT_DOWN)
 		{
+			rightMouseDown = true;
 			previousMousePosition.Set(x, y);
 		}
 	}
+}
+
+void OpenGLWindow::MouseMotion(int x, int y)
+{
+	if (leftMouseDown)
+	{ 
+		const double xDiff = previousMousePosition.x - x;
+		const double yDiff = previousMousePosition.y - y;
+		mouseX += xDiff * 0.001;
+		mouseY += yDiff * 0.001;
+	}
+
+	if (rightMouseDown)
+	{
+		const double yDiff = previousMousePosition.y - y;
+		mouseZ += (yDiff * 0.001);
+	}
+
 }
 
 void OpenGLWindow::SpecialInput(int key, int x, int y)
