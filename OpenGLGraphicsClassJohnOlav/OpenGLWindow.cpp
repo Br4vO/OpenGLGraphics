@@ -7,6 +7,7 @@ static bool sGoingUp = true;
 static cyTriMesh* vertexData;
 static GLuint g_vertexArrayID;
 static GLuint g_vertexBuffer;
+static GLuint g_normalBuffer;
 static unsigned int nrOfVertices;
 static float* matrixPointer;
 static cy::GLSLProgram* m_shaderProgram;
@@ -17,6 +18,10 @@ static cy::Point2f previousMousePosition;
 static float mouseZ;
 static float mouseX;
 static float mouseY;
+
+static float lightRotation;
+static bool ctrlDown;
+
 static bool leftMouseDown;
 static bool rightMouseDown;
 
@@ -40,7 +45,10 @@ void OpenGLWindow::Init(const char * filename)
 	glutMouseFunc(Mouse);
 	glutMotionFunc(MouseMotion);
 	glutSpecialFunc(SpecialInput);
+	glutSpecialUpFunc(SpecialInputUp);
 	glutIdleFunc(Idle);
+
+	glEnable(GL_DEPTH_TEST);
 
 	vertexData = new cyTriMesh();
 	m_shaderProgram = new cy::GLSLProgram();
@@ -58,19 +66,44 @@ bool OpenGLWindow::ExtractVertexDataAndGiveToOpenGL(const char * filename)
 		std::cerr << "Failed to load file.";
 		return false;
 	}
-	unsigned int bufferSize = vertexData->NV() * sizeof(cy::Point3f);
-	nrOfVertices = vertexData->NV();
+	
+	unsigned int nrOfFaces = vertexData->NF();
+	nrOfVertices = nrOfFaces *3;
+	unsigned int vertexBufferSize = nrOfVertices * sizeof(cy::Point3f);
+
+	std::vector<cy::Point3f> vertexDataBuffer;
+
+	std::vector<cy::Point3f> normalDataBuffer;
+
+	unsigned int normalBufferSize = vertexBufferSize;
+	vertexData->ComputeNormals(false);
+
+	for (unsigned int i = 0; i < nrOfFaces; i++)
+	{
+		auto face = vertexData->F(i);
+
+		for (unsigned int j = 0; j < 3; j++)
+		{
+			auto vertexIndex = face.v[j];
+			cy::Point3f vertex = vertexData->V(vertexIndex);
+			vertexDataBuffer.push_back(vertex);
+
+			cy::Point3f normal = vertexData->VN(vertexIndex);
+			normalDataBuffer.push_back(normal);
+		}
+	}
 
 	glGenVertexArrays(1, &g_vertexArrayID);
 	glBindVertexArray(g_vertexArrayID);
+
+
 	// Generate 1 buffer, put the resulting identifier in vertexbuffer
 	glGenBuffers(1, &g_vertexBuffer);
 	// The following commands will talk about our 'vertexbuffer' buffer
 	glBindBuffer(GL_ARRAY_BUFFER, g_vertexBuffer);
 	// Give our vertices to OpenGL.
-	glBufferData(GL_ARRAY_BUFFER, bufferSize, &vertexData->V(0), GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, vertexBufferSize, vertexDataBuffer.data(), GL_STATIC_DRAW);
 	glEnableVertexAttribArray(0);
-	glBindBuffer(GL_ARRAY_BUFFER, g_vertexBuffer);
 	glVertexAttribPointer(
 		0,                  // attribute 0. No particular reason for 0, but must match the layout in the shader.
 		3,                  // size
@@ -79,6 +112,25 @@ bool OpenGLWindow::ExtractVertexDataAndGiveToOpenGL(const char * filename)
 		sizeof(cy::Point3f),    // stride
 		(void*)0            // array buffer offset
 	);
+
+	// Generate 1 buffer, put the resulting identifier in vertexbuffer
+	glGenBuffers(1, &g_normalBuffer);
+	// The following commands will talk about our 'vertexbuffer' buffer
+	glBindBuffer(GL_ARRAY_BUFFER, g_normalBuffer);
+	//// Give our vertices to OpenGL.
+	glBufferData(GL_ARRAY_BUFFER, normalBufferSize, normalDataBuffer.data(), GL_STATIC_DRAW);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(
+		1,                  
+		3,                  // size
+		GL_FLOAT,           // type
+		GL_TRUE,           // normalized?
+		sizeof(cy::Point3f),    // stride
+		(void*)0
+		//BUFFER_OFFSET(sizeof(cy::Point3f)*3)          // array buffer offset
+	);
+
+
 	return true;
 }
 
@@ -126,11 +178,55 @@ void OpenGLWindow::CalculateMVP()
 	cy::Point3f modelTranslation(0, 0, -(objectSizes.z / 2));
 	modelMatrix.SetTrans(modelTranslation);
 
+	cy::Matrix3f MV = viewMatrix.GetSubMatrix3() * modelMatrix.GetSubMatrix3();
+
+	MV.Invert();
+	MV.Transpose();
+
 	cy::Matrix4f MVP = projectionMatrix * viewMatrix * modelMatrix;
 
 
 	m_shaderProgram->Bind();
 	m_shaderProgram->SetUniformMatrix4("MVP", MVP.data);
+	m_shaderProgram->SetUniformMatrix3("MV", MV.data);
+
+	m_shaderProgram->SetUniformMatrix4("ModelMat", modelMatrix.data);
+	m_shaderProgram->SetUniformMatrix4("ViewMat", viewMatrix.data);
+	m_shaderProgram->SetUniformMatrix4("ProjMat", projectionMatrix.data);
+
+	cy::Matrix4f lightRotationMatrix;
+	cy::Matrix4f lightTranslationMatrix;
+	lightRotationMatrix.SetIdentity();
+	cy::Point3f ligthRotationAngle(0, 0, 1);
+	cy::Point3f lightPosition(0, 0, -100);
+
+	lightRotationMatrix.SetRotation(ligthRotationAngle, lightRotation);
+	lightTranslationMatrix.AddTrans(lightPosition);
+
+	cy::Matrix4f lightMatrix = lightRotationMatrix * lightTranslationMatrix;
+	lightPosition = lightMatrix.GetTrans();
+
+
+	m_shaderProgram->SetUniform3("lightPosition", 1, lightPosition.Data());
+	m_shaderProgram->SetUniform3("cameraPosition", 1, position.Data());
+
+	cy::Point3f lightAmbientInt(1, 1, 1);
+	cy::Point3f lightDiffuseInt(1, 1, 1);
+	cy::Point3f lightSpecularInt(1, 1, 1);
+
+	m_shaderProgram->SetUniform3("lightAmbientIntensity", 1, lightAmbientInt.Data());
+	m_shaderProgram->SetUniform3("lightDiffuseIntensity", 1, lightDiffuseInt.Data());
+	m_shaderProgram->SetUniform3("lightSpecularIntensity", 1, lightSpecularInt.Data());
+
+	cy::Point3f matAmbientReflect(0.5, 0.5, 0.5 );
+	cy::Point3f matDiffuseReflect(0.5, 0.5, 0.5 );
+	cy::Point3f matSpecularReflect(0.5, 0.5, 0.5);
+
+	m_shaderProgram->SetUniform3("matAmbientReflectance", 1, matAmbientReflect.Data());
+	m_shaderProgram->SetUniform3("matDiffuseReflectance", 1, matDiffuseReflect.Data());
+	m_shaderProgram->SetUniform3("matSpecularReflectance", 1, matSpecularReflect.Data());
+
+	m_shaderProgram->SetUniform("matShininess", 64.0f);
 }
 
 void OpenGLWindow::Display()
@@ -140,8 +236,7 @@ void OpenGLWindow::Display()
 	m_shaderProgram->Bind();
 	CalculateMVP();
 	glBindVertexArray(g_vertexArrayID);
-	// Draw the triangle !
-	glDrawArrays(GL_POINTS, 0, nrOfVertices);
+	glDrawArrays(GL_TRIANGLES, 0, nrOfVertices);
 
 	glutSwapBuffers();
 }
@@ -164,7 +259,7 @@ void OpenGLWindow::Mouse(int button, int state, int x, int y)
 		else if (state == GLUT_DOWN)
 		{
 			leftMouseDown = true;
-			previousMousePosition.Set(x, y);
+			previousMousePosition.Set(static_cast<float>(x), static_cast<float>(y));
 		}
 	}
 	else if (button == GLUT_RIGHT_BUTTON)
@@ -177,25 +272,30 @@ void OpenGLWindow::Mouse(int button, int state, int x, int y)
 		else if (state == GLUT_DOWN)
 		{
 			rightMouseDown = true;
-			previousMousePosition.Set(x, y);
+			previousMousePosition.Set(static_cast<float>(x), static_cast<float>(y));
 		}
 	}
 }
 
 void OpenGLWindow::MouseMotion(int x, int y)
 {
-	if (leftMouseDown)
+	if (ctrlDown && leftMouseDown)
+	{
+		const float yDiff = previousMousePosition.y - y;
+		lightRotation += (yDiff * 0.001f);
+	}
+	else if (leftMouseDown)
 	{ 
-		const double xDiff = previousMousePosition.x - x;
-		const double yDiff = previousMousePosition.y - y;
-		mouseX += xDiff * 0.001;
-		mouseY += yDiff * 0.001;
+		const float xDiff = previousMousePosition.x - x;
+		const float yDiff = previousMousePosition.y - y;
+		mouseX += xDiff * 0.001f;
+		mouseY += yDiff * 0.001f;
 	}
 
-	if (rightMouseDown)
+	else if (rightMouseDown)
 	{
-		const double yDiff = previousMousePosition.y - y;
-		mouseZ += (yDiff * 0.001);
+		const float yDiff = previousMousePosition.y - y;
+		mouseZ += (yDiff * 0.001f);
 	}
 
 }
@@ -205,6 +305,18 @@ void OpenGLWindow::SpecialInput(int key, int x, int y)
 	if (key == GLUT_KEY_F6)
 	{
 		LoadAndBuildShaders();
+	}
+	else if (key == GLUT_KEY_CTRL_L)
+	{
+		ctrlDown = true;
+	}
+}
+
+void OpenGLWindow::SpecialInputUp(int key, int x, int y)
+{
+	if (key == GLUT_KEY_CTRL_L)
+	{
+		ctrlDown = false;
 	}
 }
 
