@@ -16,6 +16,9 @@
     <Filter Include="Source Files\CemCode">
       <UniqueIdentifier>{bb43b598-cda1-4bfc-93e0-62aaf4e6dd91}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\LodePNG">
+      <UniqueIdentifier>{6d41b0d1-8b30-4cda-9c2f-8d1056f259b9}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="OpenGLGraphicsClassJohnOlav.cpp">
@@ -23,6 +26,12 @@
     </ClCompile>
     <ClCompile Include="OpenGLWindow.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Dependencies\lodepng-master\lodepng.cpp">
+      <Filter>Source Files\LodePNG</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Dependencies\lodepng-master\lodepng_util.cpp">
+      <Filter>Source Files\LodePNG</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -43,6 +52,12 @@
     </ClInclude>
     <ClInclude Include="cyMatrix.h">
       <Filter>Source Files\CemCode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Dependencies\lodepng-master\lodepng.h">
+      <Filter>Source Files\LodePNG</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Dependencies\lodepng-master\lodepng_util.h">
+      <Filter>Source Files\LodePNG</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
