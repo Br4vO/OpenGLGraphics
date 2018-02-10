@@ -21,7 +21,7 @@ public:
 private:
 	//Functions
 	void Init(const char * filename);
-	bool ExtractVertexDataAndGiveToOpenGL(const char * filename);
+	bool ExtractDataAndGiveToOpenGL(const char * filename);
 
 	static bool LoadAndBuildShaders();
 	static void CalculateMVP();

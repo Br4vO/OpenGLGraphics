@@ -2,10 +2,12 @@
 
 layout(location = 0) in vec3 vertexPosition_modelspace;
 layout(location = 1) in vec3 vertexNormal;
+layout(location = 2) in vec3 vertexTexture;
 
 layout(location = 0) out vec3 o_normal;
 layout(location = 1) out vec3 o_light;
 layout(location = 2) out vec3 o_camera;
+layout(location = 3) out vec3 o_color;
 
 
 uniform mat4 MVP;
@@ -29,4 +31,6 @@ void main()
 	o_camera = normalize(cameraPosition - worldPosition.xyz);
 
 	gl_Position =  ProjMat * ViewMat * worldPosition;
+
+	o_color = vertexTexture;
 }

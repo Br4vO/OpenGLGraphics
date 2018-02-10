@@ -1,5 +1,8 @@
 #include "OpenGLWindow.h"
 
+#include "lodepng.h"
+#include "lodepng_util.h"
+
 //Variables
 static float sGreen = 0;
 static bool sGoingUp = true;
@@ -8,9 +11,13 @@ static cyTriMesh* vertexData;
 static GLuint g_vertexArrayID;
 static GLuint g_vertexBuffer;
 static GLuint g_normalBuffer;
+static GLuint g_textureCoordBuffer;
+
 static unsigned int nrOfVertices;
 static float* matrixPointer;
 static cy::GLSLProgram* m_shaderProgram;
+static cy::GLTexture2<GL_TEXTURE2>* g_diffuseTexture;
+static cy::GLTexture2<GL_TEXTURE2>* g_specularTexture;
 
 static GLuint MatrixID;
 
@@ -55,13 +62,14 @@ void OpenGLWindow::Init(const char * filename)
 
 	matrixPointer = new float[16];
 
-	ExtractVertexDataAndGiveToOpenGL(filename);
+	ExtractDataAndGiveToOpenGL(filename);
 	LoadAndBuildShaders();
 }
 
-bool OpenGLWindow::ExtractVertexDataAndGiveToOpenGL(const char * filename)
+bool OpenGLWindow::ExtractDataAndGiveToOpenGL(const char * filename)
 {
-	if (!vertexData->LoadFromFileObj(filename))
+
+	if (!vertexData->LoadFromFileObj(filename, true))
 	{
 		std::cerr << "Failed to load file.";
 		return false;
@@ -74,6 +82,8 @@ bool OpenGLWindow::ExtractVertexDataAndGiveToOpenGL(const char * filename)
 	std::vector<cy::Point3f> vertexDataBuffer;
 
 	std::vector<cy::Point3f> normalDataBuffer;
+
+	std::vector<cy::Point3f> vertexTextureDataBuffer;
 
 	unsigned int normalBufferSize = vertexBufferSize;
 	vertexData->ComputeNormals(false);
@@ -90,8 +100,45 @@ bool OpenGLWindow::ExtractVertexDataAndGiveToOpenGL(const char * filename)
 
 			cy::Point3f normal = vertexData->VN(vertexIndex);
 			normalDataBuffer.push_back(normal);
+
+			cy::Point3f textureVertex = vertexData->VT(vertexIndex);
+			vertexTextureDataBuffer.push_back(textureVertex);
 		}
 	}
+	const char * textureFolder = "teapot/";
+
+	std::vector<unsigned char> diffuseBuffer;
+	unsigned dw, dh;
+	{
+		std::string diffuseName(textureFolder);
+
+		diffuseName += vertexData->M(0).map_Kd.data;
+		auto errorNumber = lodepng::decode(diffuseBuffer, dw, dh, diffuseName);
+		const char * errorMessage;
+		if (errorNumber != 0)
+			errorMessage = lodepng_error_text(errorNumber);
+	}
+
+	std::vector<unsigned char> specularBuffer;
+	unsigned sw, sd;
+	{
+		std::string specularName(textureFolder);
+
+		specularName += vertexData->M(0).map_Ks.data;
+		auto errorNumber = lodepng::decode(specularBuffer, sw, sd, specularName);
+		const char * errorMessage;
+		if (errorNumber != 0)
+			errorMessage = lodepng_error_text(errorNumber);
+	}
+
+	g_diffuseTexture = new cy::GLTexture2<GL_TEXTURE2>();
+	g_diffuseTexture->Initialize();
+	g_diffuseTexture->SetImageRGBA(diffuseBuffer.data(), dw,dh, 8);
+	g_diffuseTexture->BuildMipmaps();
+	g_diffuseTexture->SetMaxAnisotropy();
+
+	m_shaderProgram->SetUniform1("texUnit", 1, );
+
 
 	glGenVertexArrays(1, &g_vertexArrayID);
 	glBindVertexArray(g_vertexArrayID);
@@ -115,7 +162,7 @@ bool OpenGLWindow::ExtractVertexDataAndGiveToOpenGL(const char * filename)
 
 	// Generate 1 buffer, put the resulting identifier in vertexbuffer
 	glGenBuffers(1, &g_normalBuffer);
-	// The following commands will talk about our 'vertexbuffer' buffer
+	// The following commands will talk about our 'verteø-æ.5xbuffer' buffer
 	glBindBuffer(GL_ARRAY_BUFFER, g_normalBuffer);
 	//// Give our vertices to OpenGL.
 	glBufferData(GL_ARRAY_BUFFER, normalBufferSize, normalDataBuffer.data(), GL_STATIC_DRAW);
@@ -126,10 +173,24 @@ bool OpenGLWindow::ExtractVertexDataAndGiveToOpenGL(const char * filename)
 		GL_FLOAT,           // type
 		GL_TRUE,           // normalized?
 		sizeof(cy::Point3f),    // stride
-		(void*)0
-		//BUFFER_OFFSET(sizeof(cy::Point3f)*3)          // array buffer offset
+		(void*)0          // array buffer offset
 	);
 
+	// Generate 1 buffer, put the resulting identifier in vertexbuffer
+	glGenBuffers(1, &g_textureCoordBuffer);
+	// The following commands will talk about our 'vertexbuffer' buffer
+	glBindBuffer(GL_ARRAY_BUFFER, g_textureCoordBuffer);
+	//// Give our vertices to OpenGL.
+	glBufferData(GL_ARRAY_BUFFER, vertexBufferSize, vertexTextureDataBuffer.data(), GL_STATIC_DRAW);
+	glEnableVertexAttribArray(2);
+	glVertexAttribPointer(
+		2,
+		3,                  // size
+		GL_FLOAT,           // type
+		GL_TRUE,           // normalized?
+		sizeof(cy::Point3f),    // stride
+		(void*)0          // array buffer offset
+	);
 
 	return true;
 }
