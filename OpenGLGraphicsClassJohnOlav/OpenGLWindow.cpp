@@ -83,9 +83,10 @@ bool OpenGLWindow::ExtractDataAndGiveToOpenGL(const char * filename)
 
 	std::vector<cy::Point3f> normalDataBuffer;
 
-	std::vector<cy::Point3f> vertexTextureDataBuffer;
+	std::vector<cy::Point2f> vertexTextureDataBuffer;
 
 	unsigned int normalBufferSize = vertexBufferSize;
+	unsigned int vertexTextureBufferSize = nrOfVertices * sizeof(cy::Point2f);
 	vertexData->ComputeNormals(false);
 
 	for (unsigned int i = 0; i < nrOfFaces; i++)
@@ -101,7 +102,7 @@ bool OpenGLWindow::ExtractDataAndGiveToOpenGL(const char * filename)
 			cy::Point3f normal = vertexData->VN(vertexIndex);
 			normalDataBuffer.push_back(normal);
 
-			cy::Point3f textureVertex = vertexData->VT(vertexIndex);
+			cy::Point2f textureVertex = cy::Point2f(vertexData->VT(vertexIndex).x, vertexData->VT(vertexIndex).y) ;
 			vertexTextureDataBuffer.push_back(textureVertex);
 		}
 	}
@@ -131,17 +132,14 @@ bool OpenGLWindow::ExtractDataAndGiveToOpenGL(const char * filename)
 			errorMessage = lodepng_error_text(errorNumber);
 	}
 
+	glGenVertexArrays(1, &g_vertexArrayID);
+	glBindVertexArray(g_vertexArrayID);
+
 	g_diffuseTexture = new cy::GLTexture2<GL_TEXTURE2>();
 	g_diffuseTexture->Initialize();
 	g_diffuseTexture->SetImageRGBA(diffuseBuffer.data(), dw,dh, 8);
 	g_diffuseTexture->BuildMipmaps();
 	g_diffuseTexture->SetMaxAnisotropy();
-
-	m_shaderProgram->SetUniform1("texUnit", 1, );
-
-
-	glGenVertexArrays(1, &g_vertexArrayID);
-	glBindVertexArray(g_vertexArrayID);
 
 
 	// Generate 1 buffer, put the resulting identifier in vertexbuffer
@@ -181,14 +179,14 @@ bool OpenGLWindow::ExtractDataAndGiveToOpenGL(const char * filename)
 	// The following commands will talk about our 'vertexbuffer' buffer
 	glBindBuffer(GL_ARRAY_BUFFER, g_textureCoordBuffer);
 	//// Give our vertices to OpenGL.
-	glBufferData(GL_ARRAY_BUFFER, vertexBufferSize, vertexTextureDataBuffer.data(), GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, vertexTextureBufferSize, vertexTextureDataBuffer.data(), GL_STATIC_DRAW);
 	glEnableVertexAttribArray(2);
 	glVertexAttribPointer(
 		2,
-		3,                  // size
+		2,                  // size
 		GL_FLOAT,           // type
 		GL_TRUE,           // normalized?
-		sizeof(cy::Point3f),    // stride
+		sizeof(cy::Point2f),    // stride
 		(void*)0          // array buffer offset
 	);
 
@@ -288,6 +286,9 @@ void OpenGLWindow::CalculateMVP()
 	m_shaderProgram->SetUniform3("matSpecularReflectance", 1, matSpecularReflect.Data());
 
 	m_shaderProgram->SetUniform("matShininess", 64.0f);
+
+	g_diffuseTexture->Bind();
+	m_shaderProgram->SetUniform("texUnit", g_diffuseTexture->GetID());
 }
 
 void OpenGLWindow::Display()
