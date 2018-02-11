@@ -13,11 +13,12 @@ static GLuint g_vertexBuffer;
 static GLuint g_normalBuffer;
 static GLuint g_textureCoordBuffer;
 
+static GLuint g_textureIDDiffuse;
+static GLuint g_textureIDSpec;
+
 static unsigned int nrOfVertices;
 static float* matrixPointer;
 static cy::GLSLProgram* m_shaderProgram;
-static cy::GLTexture2<GL_TEXTURE2>* g_diffuseTexture;
-static cy::GLTexture2<GL_TEXTURE2>* g_specularTexture;
 
 static GLuint MatrixID;
 
@@ -86,27 +87,33 @@ bool OpenGLWindow::ExtractDataAndGiveToOpenGL(const char * filename)
 	std::vector<cy::Point2f> vertexTextureDataBuffer;
 
 	unsigned int normalBufferSize = vertexBufferSize;
+
 	unsigned int vertexTextureBufferSize = nrOfVertices * sizeof(cy::Point2f);
 	vertexData->ComputeNormals(false);
 
 	for (unsigned int i = 0; i < nrOfFaces; i++)
 	{
 		auto face = vertexData->F(i);
+		auto faceNormal = vertexData->FN(i);
+		auto faceTexture = vertexData->FT(i);
 
 		for (unsigned int j = 0; j < 3; j++)
 		{
 			auto vertexIndex = face.v[j];
+			auto vertexNormalIndex = faceNormal.v[j];
+			auto vertexTextureIndex = faceTexture.v[j];
+
 			cy::Point3f vertex = vertexData->V(vertexIndex);
 			vertexDataBuffer.push_back(vertex);
 
-			cy::Point3f normal = vertexData->VN(vertexIndex);
+			cy::Point3f normal = vertexData->VN(vertexNormalIndex);
 			normalDataBuffer.push_back(normal);
 
-			cy::Point2f textureVertex = cy::Point2f(vertexData->VT(vertexIndex).x, vertexData->VT(vertexIndex).y) ;
+			cy::Point2f textureVertex = cy::Point2f(vertexData->VT(vertexTextureIndex).x, vertexData->VT(vertexTextureIndex).y);
 			vertexTextureDataBuffer.push_back(textureVertex);
 		}
 	}
-	const char * textureFolder = "teapot/";
+	const char * textureFolder = "Teapot/";
 
 	std::vector<unsigned char> diffuseBuffer;
 	unsigned dw, dh;
@@ -114,19 +121,20 @@ bool OpenGLWindow::ExtractDataAndGiveToOpenGL(const char * filename)
 		std::string diffuseName(textureFolder);
 
 		diffuseName += vertexData->M(0).map_Kd.data;
-		auto errorNumber = lodepng::decode(diffuseBuffer, dw, dh, diffuseName);
+
+		auto errorNumber = lodepng::decode(diffuseBuffer, dw, dh, diffuseName, LodePNGColorType::LCT_RGB);
 		const char * errorMessage;
 		if (errorNumber != 0)
 			errorMessage = lodepng_error_text(errorNumber);
 	}
 
 	std::vector<unsigned char> specularBuffer;
-	unsigned sw, sd;
+	unsigned sw, sh;
 	{
 		std::string specularName(textureFolder);
 
 		specularName += vertexData->M(0).map_Ks.data;
-		auto errorNumber = lodepng::decode(specularBuffer, sw, sd, specularName);
+		auto errorNumber = lodepng::decode(specularBuffer, sw, sh, specularName, LodePNGColorType::LCT_RGB);
 		const char * errorMessage;
 		if (errorNumber != 0)
 			errorMessage = lodepng_error_text(errorNumber);
@@ -134,13 +142,6 @@ bool OpenGLWindow::ExtractDataAndGiveToOpenGL(const char * filename)
 
 	glGenVertexArrays(1, &g_vertexArrayID);
 	glBindVertexArray(g_vertexArrayID);
-
-	g_diffuseTexture = new cy::GLTexture2<GL_TEXTURE2>();
-	g_diffuseTexture->Initialize();
-	g_diffuseTexture->SetImageRGBA(diffuseBuffer.data(), dw,dh, 8);
-	g_diffuseTexture->BuildMipmaps();
-	g_diffuseTexture->SetMaxAnisotropy();
-
 
 	// Generate 1 buffer, put the resulting identifier in vertexbuffer
 	glGenBuffers(1, &g_vertexBuffer);
@@ -185,10 +186,30 @@ bool OpenGLWindow::ExtractDataAndGiveToOpenGL(const char * filename)
 		2,
 		2,                  // size
 		GL_FLOAT,           // type
-		GL_TRUE,           // normalized?
-		sizeof(cy::Point2f),    // stride
+		GL_FALSE,           // normalized?
+		0,    // stride
 		(void*)0          // array buffer offset
 	);
+
+	glGenTextures(1, &g_textureIDDiffuse);
+
+	glBindTexture(GL_TEXTURE_2D, g_textureIDDiffuse);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, dw, dh, 0, GL_RGB, GL_UNSIGNED_BYTE, diffuseBuffer.data());
+	glGenerateMipmap(GL_TEXTURE_2D);
+
+	glGenTextures(1, &g_textureIDSpec);
+
+	glBindTexture(GL_TEXTURE_2D, g_textureIDSpec);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, sw, sh, 0, GL_RGB, GL_UNSIGNED_BYTE, specularBuffer.data());
+	glGenerateMipmap(GL_TEXTURE_2D);
 
 	return true;
 }
@@ -286,9 +307,6 @@ void OpenGLWindow::CalculateMVP()
 	m_shaderProgram->SetUniform3("matSpecularReflectance", 1, matSpecularReflect.Data());
 
 	m_shaderProgram->SetUniform("matShininess", 64.0f);
-
-	g_diffuseTexture->Bind();
-	m_shaderProgram->SetUniform("texUnit", g_diffuseTexture->GetID());
 }
 
 void OpenGLWindow::Display()
@@ -298,6 +316,13 @@ void OpenGLWindow::Display()
 	m_shaderProgram->Bind();
 	CalculateMVP();
 	glBindVertexArray(g_vertexArrayID);
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, g_textureIDDiffuse);
+
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, g_textureIDSpec);
+
 	glDrawArrays(GL_TRIANGLES, 0, nrOfVertices);
 
 	glutSwapBuffers();

@@ -15,7 +15,8 @@ uniform vec3 matDiffuseReflectance;
 uniform vec3 matSpecularReflectance; 
 uniform float matShininess; 
 
- layout(binding = 0) uniform sampler2D texUnit;
+uniform sampler2D texUnitD;
+uniform sampler2D texUnitS;
 
 out vec4 color;
 
@@ -52,6 +53,6 @@ void main()
    vec3 Idif = diffuseLighting(N, L);
    vec3 Ispe = specularLighting(N, L, V);
 
-  color.xyz = texture(texUnit, i_UV).rgb * (Iamb + Idif + Ispe);
-  color.a = 1;
+
+	color = texture2D(texUnitS, i_UV) * texture2D(texUnitD, i_UV) * vec4((Iamb + Idif + Ispe), 1);
 }
