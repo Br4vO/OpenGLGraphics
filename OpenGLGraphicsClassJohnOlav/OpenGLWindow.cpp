@@ -8,27 +8,40 @@ static float sGreen = 0;
 static bool sGoingUp = true;
 
 static cyTriMesh* vertexData;
+
 static GLuint g_vertexArrayID;
+static GLuint g_vertexArrayPlaneID;
+
 static GLuint g_vertexBuffer;
 static GLuint g_normalBuffer;
 static GLuint g_textureCoordBuffer;
+
+static GLuint g_renderVertexBuffer;
 
 static GLuint g_textureIDDiffuse;
 static GLuint g_textureIDSpec;
 
 static unsigned int nrOfVertices;
+static const unsigned int nrOfPlaneVertices = 6;
 static float* matrixPointer;
-static cy::GLSLProgram* m_shaderProgram;
+static cy::GLSLProgram* g_shaderProgram;
+static cy::GLSLProgram* g_shaderProgramPlane;
+
+static cy::GLRenderTexture<GL_TEXTURE_2D>* g_renderTexture;
 
 static GLuint MatrixID;
 
 static cy::Point2f previousMousePosition;
-static float mouseZ;
-static float mouseX;
-static float mouseY;
+static float mouseZTeapot;
+static float mouseXTeapot;
+static float mouseYTeapot;
+static float mouseZPlane;
+static float mouseXPlane;
+static float mouseYPlane;
 
 static float lightRotation;
 static bool ctrlDown;
+static bool altDown;
 
 static bool leftMouseDown;
 static bool rightMouseDown;
@@ -41,7 +54,9 @@ OpenGLWindow::OpenGLWindow(const char * filename)
 OpenGLWindow::~OpenGLWindow()
 {
 	delete vertexData;
-	delete m_shaderProgram;
+	delete g_shaderProgram;
+	delete g_renderTexture;
+	delete g_shaderProgramPlane;
 	delete[] matrixPointer;
 }
 
@@ -59,11 +74,21 @@ void OpenGLWindow::Init(const char * filename)
 	glEnable(GL_DEPTH_TEST);
 
 	vertexData = new cyTriMesh();
-	m_shaderProgram = new cy::GLSLProgram();
+	g_shaderProgram = new cy::GLSLProgram();
+	g_shaderProgramPlane = new cy::GLSLProgram();
+	g_renderTexture = new cy::GLRenderTexture<GL_TEXTURE_2D>();
+
+	g_renderTexture->Initialize(true, 3, windowWidth, windowHeight);
+	g_renderTexture->SetTextureFilteringMode(GL_LINEAR, 0);
+	g_renderTexture->SetTextureMaxAnisotropy();
+	g_renderTexture->BuildTextureMipmaps();
 
 	matrixPointer = new float[16];
 
 	ExtractDataAndGiveToOpenGL(filename);
+
+	GeneratePlane();
+
 	LoadAndBuildShaders();
 }
 
@@ -214,18 +239,83 @@ bool OpenGLWindow::ExtractDataAndGiveToOpenGL(const char * filename)
 	return true;
 }
 
+bool OpenGLWindow::GeneratePlane()
+{
+	const GLfloat quad_vertex_buffer_data[] = {
+		-10.0f, -10.0f, 0.0f,
+		10.0f, -10.0f, 0.0f,
+		-10.0f,  10.0f, 0.0f,
+		-10.0f,  10.0f,0.0f,
+		10.0f, -10.0f, 0.0f,
+		10.0f,  10.0f, 0.0f,
+	};
+
+	glGenVertexArrays(1, &g_vertexArrayPlaneID);
+	glBindVertexArray(g_vertexArrayPlaneID);
+
+	// Generate 1 buffer, put the resulting identifier in vertexbuffer
+	glGenBuffers(1, &g_renderVertexBuffer);
+	// The following commands will talk about our 'vertexbuffer' buffer
+	glBindBuffer(GL_ARRAY_BUFFER, g_renderVertexBuffer);
+	// Give our vertices to OpenGL.
+	glBufferData(GL_ARRAY_BUFFER, sizeof(quad_vertex_buffer_data), quad_vertex_buffer_data, GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(
+		0,                  
+		3,                  // size
+		GL_FLOAT,           // type
+		GL_FALSE,           // normalized?
+		sizeof(cy::Point3f),    // stride
+		(void*)0            // array buffer offset
+	);
+
+	const GLfloat UVs[] = {
+		0.0f, 0.0f, 
+		1.0f, 0.0f, 
+		0.0f,  1.0f, 
+		0.0f,  1.0f,
+		1.0f, 0.0f, 
+		1.0f,  1.0f, 
+	};
+
+	// Generate 1 buffer, put the resulting identifier in vertexbuffer
+	glGenBuffers(1, &g_textureCoordBuffer);
+	// The following commands will talk about our 'vertexbuffer' buffer
+	glBindBuffer(GL_ARRAY_BUFFER, g_textureCoordBuffer);
+	//// Give our vertices to OpenGL.
+	glBufferData(GL_ARRAY_BUFFER, sizeof(UVs), UVs, GL_STATIC_DRAW);
+	glEnableVertexAttribArray(2);
+	glVertexAttribPointer(
+		2,
+		2,                  // size
+		GL_FLOAT,           // type
+		GL_FALSE,           // normalized?
+		0,    // stride
+		(void*)0          // array buffer offset
+	);
+
+	return true;
+}
+
 bool OpenGLWindow::LoadAndBuildShaders()
 {
-	m_shaderProgram->CreateProgram();
+	g_shaderProgram->CreateProgram();
 
 	const char * vertexShaderPath = "Shaders\\VertexShader.glsl";
 	const char * fragmentShaderPath = "Shaders\\FragmentShader.glsl";
 
-	bool success = m_shaderProgram->BuildFiles(vertexShaderPath, fragmentShaderPath);
+	bool success = g_shaderProgram->BuildFiles(vertexShaderPath, fragmentShaderPath);
+
+	g_shaderProgramPlane->CreateProgram();
+
+	vertexShaderPath = "Shaders\\VertexShaderPlane.glsl";
+	fragmentShaderPath = "Shaders\\FragmentShaderPlane.glsl";
+	success = g_shaderProgramPlane->BuildFiles(vertexShaderPath, fragmentShaderPath);
+
 	return success;
 }
 
-void OpenGLWindow::CalculateMVP()
+void OpenGLWindow::CalculateMVPTeapot()
 {
 	cy::Matrix4f projectionMatrix;
 	projectionMatrix.SetIdentity();
@@ -239,14 +329,14 @@ void OpenGLWindow::CalculateMVP()
 	cy::Matrix4f rotationMatrix;
 	cy::Matrix4f secondRotationMatrix;
 
-	cy::Point3f position(0, 0, -40 + mouseZ);
+	cy::Point3f position(0, 0, -40 + mouseZTeapot);
 	positionMatrix.SetTrans(position);
 
 	cy::Point3f rotationAxis(1, 0, 0);
-	rotationMatrix.SetRotation(rotationAxis, -1.5708f + mouseX);
+	rotationMatrix.SetRotation(rotationAxis, -1.5708f + mouseXTeapot);
 
 	cy::Point3f secondRotationAxis(0, 1, 0);
-	secondRotationMatrix.SetRotation(secondRotationAxis, -1.5708f + mouseY);
+	secondRotationMatrix.SetRotation(secondRotationAxis, -1.5708f + mouseYTeapot);
 
 	viewMatrix =  positionMatrix * rotationMatrix * secondRotationMatrix;
 
@@ -266,13 +356,13 @@ void OpenGLWindow::CalculateMVP()
 	cy::Matrix4f MVP = projectionMatrix * viewMatrix * modelMatrix;
 
 
-	m_shaderProgram->Bind();
-	m_shaderProgram->SetUniformMatrix4("MVP", MVP.data);
-	m_shaderProgram->SetUniformMatrix3("MV", MV.data);
+	g_shaderProgram->Bind();
+	g_shaderProgram->SetUniformMatrix4("MVP", MVP.data);
+	g_shaderProgram->SetUniformMatrix3("MV", MV.data);
 
-	m_shaderProgram->SetUniformMatrix4("ModelMat", modelMatrix.data);
-	m_shaderProgram->SetUniformMatrix4("ViewMat", viewMatrix.data);
-	m_shaderProgram->SetUniformMatrix4("ProjMat", projectionMatrix.data);
+	g_shaderProgram->SetUniformMatrix4("ModelMat", modelMatrix.data);
+	g_shaderProgram->SetUniformMatrix4("ViewMat", viewMatrix.data);
+	g_shaderProgram->SetUniformMatrix4("ProjMat", projectionMatrix.data);
 
 	cy::Matrix4f lightRotationMatrix;
 	cy::Matrix4f lightTranslationMatrix;
@@ -287,45 +377,152 @@ void OpenGLWindow::CalculateMVP()
 	lightPosition = lightMatrix.GetTrans();
 
 
-	m_shaderProgram->SetUniform3("lightPosition", 1, lightPosition.Data());
-	m_shaderProgram->SetUniform3("cameraPosition", 1, position.Data());
+	g_shaderProgram->SetUniform3("lightPosition", 1, lightPosition.Data());
+	g_shaderProgram->SetUniform3("cameraPosition", 1, position.Data());
 
 	cy::Point3f lightAmbientInt(1, 1, 1);
 	cy::Point3f lightDiffuseInt(1, 1, 1);
 	cy::Point3f lightSpecularInt(1, 1, 1);
 
-	m_shaderProgram->SetUniform3("lightAmbientIntensity", 1, lightAmbientInt.Data());
-	m_shaderProgram->SetUniform3("lightDiffuseIntensity", 1, lightDiffuseInt.Data());
-	m_shaderProgram->SetUniform3("lightSpecularIntensity", 1, lightSpecularInt.Data());
+	g_shaderProgram->SetUniform3("lightAmbientIntensity", 1, lightAmbientInt.Data());
+	g_shaderProgram->SetUniform3("lightDiffuseIntensity", 1, lightDiffuseInt.Data());
+	g_shaderProgram->SetUniform3("lightSpecularIntensity", 1, lightSpecularInt.Data());
 
 	cy::Point3f matAmbientReflect(0.5, 0.5, 0.5 );
 	cy::Point3f matDiffuseReflect(0.5, 0.5, 0.5 );
 	cy::Point3f matSpecularReflect(0.5, 0.5, 0.5);
 
-	m_shaderProgram->SetUniform3("matAmbientReflectance", 1, matAmbientReflect.Data());
-	m_shaderProgram->SetUniform3("matDiffuseReflectance", 1, matDiffuseReflect.Data());
-	m_shaderProgram->SetUniform3("matSpecularReflectance", 1, matSpecularReflect.Data());
+	g_shaderProgram->SetUniform3("matAmbientReflectance", 1, matAmbientReflect.Data());
+	g_shaderProgram->SetUniform3("matDiffuseReflectance", 1, matDiffuseReflect.Data());
+	g_shaderProgram->SetUniform3("matSpecularReflectance", 1, matSpecularReflect.Data());
 
-	m_shaderProgram->SetUniform("matShininess", 64.0f);
+	g_shaderProgram->SetUniform("matShininess", 64.0f);
+}
+
+void OpenGLWindow::CalculateMVPPlane()
+{
+	cy::Matrix4f projectionMatrix;
+	projectionMatrix.SetIdentity();
+	projectionMatrix.SetPerspective(45.0f, windowWidth / windowHeight, 0.1f, 100.0f);
+
+
+	cy::Matrix4f viewMatrix;
+	viewMatrix.SetIdentity();
+
+	cy::Matrix4f positionMatrix;
+	cy::Matrix4f rotationMatrix;
+	cy::Matrix4f secondRotationMatrix;
+
+	cy::Point3f position(0, 0, -40 + mouseZPlane);
+	positionMatrix.SetTrans(position);
+
+	cy::Point3f rotationAxis(1, 0, 0);
+	rotationMatrix.SetRotation(rotationAxis, mouseXPlane);
+
+	cy::Point3f secondRotationAxis(0, 1, 0);
+	secondRotationMatrix.SetRotation(secondRotationAxis,mouseYPlane);
+
+	viewMatrix = positionMatrix * rotationMatrix * secondRotationMatrix;
+
+	cy::Matrix4f modelMatrix;
+	modelMatrix.SetIdentity();
+
+	vertexData->ComputeBoundingBox();
+	cy::Point3f objectSizes = vertexData->GetBoundMax() - vertexData->GetBoundMin();
+	cy::Point3f modelTranslation(0, 0, -(objectSizes.z / 2));
+	modelMatrix.SetTrans(modelTranslation);
+
+	cy::Matrix3f MV = viewMatrix.GetSubMatrix3() * modelMatrix.GetSubMatrix3();
+
+	MV.Invert();
+	MV.Transpose();
+
+	cy::Matrix4f MVP = projectionMatrix * viewMatrix * modelMatrix;
+
+
+	g_shaderProgram->Bind();
+	g_shaderProgram->SetUniformMatrix4("MVP", MVP.data);
+	g_shaderProgram->SetUniformMatrix3("MV", MV.data);
+
+	g_shaderProgram->SetUniformMatrix4("ModelMat", modelMatrix.data);
+	g_shaderProgram->SetUniformMatrix4("ViewMat", viewMatrix.data);
+	g_shaderProgram->SetUniformMatrix4("ProjMat", projectionMatrix.data);
+
+	cy::Matrix4f lightRotationMatrix;
+	cy::Matrix4f lightTranslationMatrix;
+	lightRotationMatrix.SetIdentity();
+	cy::Point3f ligthRotationAngle(0, 0, 1);
+	cy::Point3f lightPosition(0, 0, -100);
+
+	lightRotationMatrix.SetRotation(ligthRotationAngle, lightRotation);
+	lightTranslationMatrix.AddTrans(lightPosition);
+
+	cy::Matrix4f lightMatrix = lightRotationMatrix * lightTranslationMatrix;
+	lightPosition = lightMatrix.GetTrans();
+
+
+	g_shaderProgram->SetUniform3("lightPosition", 1, lightPosition.Data());
+	g_shaderProgram->SetUniform3("cameraPosition", 1, position.Data());
+
+	cy::Point3f lightAmbientInt(1, 1, 1);
+	cy::Point3f lightDiffuseInt(1, 1, 1);
+	cy::Point3f lightSpecularInt(1, 1, 1);
+
+	g_shaderProgram->SetUniform3("lightAmbientIntensity", 1, lightAmbientInt.Data());
+	g_shaderProgram->SetUniform3("lightDiffuseIntensity", 1, lightDiffuseInt.Data());
+	g_shaderProgram->SetUniform3("lightSpecularIntensity", 1, lightSpecularInt.Data());
+
+	cy::Point3f matAmbientReflect(0.5, 0.5, 0.5);
+	cy::Point3f matDiffuseReflect(0.5, 0.5, 0.5);
+	cy::Point3f matSpecularReflect(0.5, 0.5, 0.5);
+
+	g_shaderProgram->SetUniform3("matAmbientReflectance", 1, matAmbientReflect.Data());
+	g_shaderProgram->SetUniform3("matDiffuseReflectance", 1, matDiffuseReflect.Data());
+	g_shaderProgram->SetUniform3("matSpecularReflectance", 1, matSpecularReflect.Data());
+
+	g_shaderProgram->SetUniform("matShininess", 64.0f);
 }
 
 void OpenGLWindow::Display()
 {
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	m_shaderProgram->Bind();
-	CalculateMVP();
-	glBindVertexArray(g_vertexArrayID);
+	{
+		g_renderTexture->Bind();
 
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, g_textureIDDiffuse);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glClearColor(0, 0, 0, 1);
 
-	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, g_textureIDSpec);
+		g_shaderProgram->Bind();
+		CalculateMVPTeapot();
+		glBindVertexArray(g_vertexArrayID);
 
-	glDrawArrays(GL_TRIANGLES, 0, nrOfVertices);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, g_textureIDDiffuse);
 
-	glutSwapBuffers();
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, g_textureIDSpec);
+
+		glDrawArrays(GL_TRIANGLES, 0, nrOfVertices);
+
+		g_renderTexture->Unbind();
+	}
+	{
+
+
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glClearColor(1, 0, 0, 1);
+		glBindVertexArray(g_vertexArrayPlaneID);
+		g_shaderProgramPlane->Bind();
+		CalculateMVPPlane();
+
+		glActiveTexture(GL_TEXTURE0);
+		g_renderTexture->BindTexture();
+
+		glDrawArrays(GL_TRIANGLES, 0, nrOfPlaneVertices);
+
+		glutSwapBuffers();
+	}
+
 }
 
 void OpenGLWindow::Keyboard(unsigned char key, int x, int y)
@@ -375,14 +572,27 @@ void OpenGLWindow::MouseMotion(int x, int y)
 	{ 
 		const float xDiff = previousMousePosition.x - x;
 		const float yDiff = previousMousePosition.y - y;
-		mouseX += xDiff * 0.001f;
-		mouseY += yDiff * 0.001f;
+		if (altDown)
+		{
+			mouseXPlane += xDiff * 0.001f;
+			mouseYPlane += yDiff * 0.001f;
+		}
+		else
+		{
+			mouseXTeapot += xDiff * 0.001f;
+			mouseYTeapot += yDiff * 0.001f;
+		}
+
+
 	}
 
 	else if (rightMouseDown)
 	{
 		const float yDiff = previousMousePosition.y - y;
-		mouseZ += (yDiff * 0.001f);
+		if (altDown)
+			mouseZPlane += (yDiff * 0.001f);
+		else
+			mouseZTeapot += (yDiff * 0.001f);
 	}
 
 }
@@ -397,6 +607,10 @@ void OpenGLWindow::SpecialInput(int key, int x, int y)
 	{
 		ctrlDown = true;
 	}
+	else if (key == GLUT_KEY_ALT_L)
+	{
+		altDown = true;
+	}
 }
 
 void OpenGLWindow::SpecialInputUp(int key, int x, int y)
@@ -405,12 +619,14 @@ void OpenGLWindow::SpecialInputUp(int key, int x, int y)
 	{
 		ctrlDown = false;
 	}
+	else if (key == GLUT_KEY_ALT_L)
+	{
+		altDown = false;
+	}
 }
 
 void OpenGLWindow::Idle()
 {
-
-	glClearColor(0, 0, 0, 1);
 
 	glutPostRedisplay();
 }

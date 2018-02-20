@@ -22,9 +22,11 @@ private:
 	//Functions
 	void Init(const char * filename);
 	bool ExtractDataAndGiveToOpenGL(const char * filename);
+	bool GeneratePlane();
 
 	static bool LoadAndBuildShaders();
-	static void CalculateMVP();
+	static void CalculateMVPTeapot();
+	static void CalculateMVPPlane();
 
 
 	//Event Functions
