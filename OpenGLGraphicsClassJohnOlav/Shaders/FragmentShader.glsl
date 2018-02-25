@@ -15,8 +15,12 @@ uniform vec3 matDiffuseReflectance;
 uniform vec3 matSpecularReflectance; 
 uniform float matShininess; 
 
+uniform mat4 ViewMat;
+
 uniform sampler2D texUnitD;
 uniform sampler2D texUnitS;
+
+uniform samplerCube cube_texture;
 
 out vec4 color;
 
@@ -49,10 +53,14 @@ void main()
    vec3 V = normalize(i_camera);
    vec3 N = normalize(i_normal);
 
+   vec3 R = reflect(V, N);
+   R = vec3(inverse(ViewMat) * vec4(R, 0.0));
+
    vec3 Iamb = ambientLighting();
    vec3 Idif = diffuseLighting(N, L);
    vec3 Ispe = specularLighting(N, L, V);
 
-
-	color = texture2D(texUnitS, i_UV) * texture2D(texUnitD, i_UV) * vec4((Iamb + Idif + Ispe), 1);
+   
+	//color = texture2D(texUnitS, i_UV) * texture2D(texUnitD, i_UV) ;
+	color = texture(cube_texture, R)* vec4((Iamb + Idif + Ispe), 1);
 }

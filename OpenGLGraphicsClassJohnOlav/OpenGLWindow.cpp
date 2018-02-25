@@ -11,6 +11,7 @@ static cyTriMesh* vertexData;
 
 static GLuint g_vertexArrayID;
 static GLuint g_vertexArrayPlaneID;
+static GLuint g_vertexArrayBoxID;
 
 static GLuint g_vertexBuffer;
 static GLuint g_normalBuffer;
@@ -18,16 +19,23 @@ static GLuint g_textureCoordBuffer;
 
 static GLuint g_renderVertexBuffer;
 
+static GLuint g_boxVertexBuffer;
+static GLuint g_boxNormalBuffer;
+
 static GLuint g_textureIDDiffuse;
 static GLuint g_textureIDSpec;
 
 static unsigned int nrOfVertices;
 static const unsigned int nrOfPlaneVertices = 6;
+static  unsigned int nrOfBoxVertices;
+
 static float* matrixPointer;
 static cy::GLSLProgram* g_shaderProgram;
 static cy::GLSLProgram* g_shaderProgramPlane;
+static cy::GLSLProgram* g_shaderProgramBox;
 
 static cy::GLRenderTexture<GL_TEXTURE_2D>* g_renderTexture;
+static cy::GLTextureCubeMap cubeMap;
 
 static GLuint MatrixID;
 
@@ -57,6 +65,7 @@ OpenGLWindow::~OpenGLWindow()
 	delete g_shaderProgram;
 	delete g_renderTexture;
 	delete g_shaderProgramPlane;
+	delete g_shaderProgramBox;
 	delete[] matrixPointer;
 }
 
@@ -76,6 +85,7 @@ void OpenGLWindow::Init(const char * filename)
 	vertexData = new cyTriMesh();
 	g_shaderProgram = new cy::GLSLProgram();
 	g_shaderProgramPlane = new cy::GLSLProgram();
+	g_shaderProgramBox = new cy::GLSLProgram();
 	g_renderTexture = new cy::GLRenderTexture<GL_TEXTURE_2D>();
 
 	g_renderTexture->Initialize(true, 3, windowWidth, windowHeight);
@@ -84,6 +94,8 @@ void OpenGLWindow::Init(const char * filename)
 	g_renderTexture->BuildTextureMipmaps();
 
 	matrixPointer = new float[16];
+
+	GenerateBox();
 
 	ExtractDataAndGiveToOpenGL(filename);
 
@@ -138,7 +150,7 @@ bool OpenGLWindow::ExtractDataAndGiveToOpenGL(const char * filename)
 			vertexTextureDataBuffer.push_back(textureVertex);
 		}
 	}
-	const char * textureFolder = "Teapot/";
+	/*const char * textureFolder = "Teapot/";
 
 	std::vector<unsigned char> diffuseBuffer;
 	unsigned dw, dh;
@@ -163,7 +175,7 @@ bool OpenGLWindow::ExtractDataAndGiveToOpenGL(const char * filename)
 		const char * errorMessage;
 		if (errorNumber != 0)
 			errorMessage = lodepng_error_text(errorNumber);
-	}
+	}*/
 
 	glGenVertexArrays(1, &g_vertexArrayID);
 	glBindVertexArray(g_vertexArrayID);
@@ -216,25 +228,26 @@ bool OpenGLWindow::ExtractDataAndGiveToOpenGL(const char * filename)
 		(void*)0          // array buffer offset
 	);
 
-	glGenTextures(1, &g_textureIDDiffuse);
+	//glGenTextures(1, &g_textureIDDiffuse);
 
-	glBindTexture(GL_TEXTURE_2D, g_textureIDDiffuse);
+	//glBindTexture(GL_TEXTURE_2D, g_textureIDDiffuse);
 
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, dw, dh, 0, GL_RGB, GL_UNSIGNED_BYTE, diffuseBuffer.data());
-	glGenerateMipmap(GL_TEXTURE_2D);
+	//glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, dw, dh, 0, GL_RGB, GL_UNSIGNED_BYTE, diffuseBuffer.data());
+	//glGenerateMipmap(GL_TEXTURE_2D);
 
-	glGenTextures(1, &g_textureIDSpec);
 
-	glBindTexture(GL_TEXTURE_2D, g_textureIDSpec);
+	//glGenTextures(1, &g_textureIDSpec);
 
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	//glBindTexture(GL_TEXTURE_2D, g_textureIDSpec);
 
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, sw, sh, 0, GL_RGB, GL_UNSIGNED_BYTE, specularBuffer.data());
-	glGenerateMipmap(GL_TEXTURE_2D);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+	//glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, sw, sh, 0, GL_RGB, GL_UNSIGNED_BYTE, specularBuffer.data());
+	//glGenerateMipmap(GL_TEXTURE_2D);
 
 	return true;
 }
@@ -294,6 +307,151 @@ bool OpenGLWindow::GeneratePlane()
 		(void*)0          // array buffer offset
 	);
 
+
+
+	return true;
+}
+
+bool OpenGLWindow::GenerateBox()
+{
+	cyTriMesh boxVertexData;
+	boxVertexData.LoadFromFileObj("cubemap/cube.obj");
+
+	unsigned int nrOfFaces = boxVertexData.NF();
+	nrOfBoxVertices = nrOfFaces * 3;
+	unsigned int vertexBufferSize = nrOfBoxVertices * sizeof(cy::Point3f);
+
+	std::vector<cy::Point3f> vertexDataBuffer;
+
+	for (unsigned int i = 0; i < nrOfFaces; i++)
+	{
+		auto face = boxVertexData.F(i);
+
+		for (unsigned int j = 0; j < 3; j++)
+		{
+			auto vertexIndex = face.v[j];
+
+			cy::Point3f vertex = boxVertexData.V(vertexIndex);
+			vertexDataBuffer.push_back(vertex);
+		}
+	}
+
+	const char * textureFolder = "cubemap/";
+
+	const char * negxTextureName = "cubemap_negx.png";
+	const char * negyTextureName = "cubemap_negy.png";
+	const char * negzTextureName = "cubemap_negz.png";
+	const char * posxTextureName = "cubemap_posx.png";
+	const char * posyTextureName = "cubemap_posy.png";
+	const char * poszTextureName = "cubemap_posz.png";
+
+	std::vector<unsigned char> negXBuffer;
+	unsigned negxWidth, negxHeight;
+	{
+		std::string negXName(textureFolder);
+
+		negXName += negxTextureName;
+
+		auto errorNumber = lodepng::decode(negXBuffer, negxWidth, negxHeight, negXName, LodePNGColorType::LCT_RGB);
+		const char * errorMessage;
+		if (errorNumber != 0)
+			errorMessage = lodepng_error_text(errorNumber);
+	}
+
+	std::vector<unsigned char> negYBuffer;
+	unsigned negyWidth, negyHeight;
+	{
+		std::string negyName(textureFolder);
+
+		negyName += negyTextureName;
+
+		auto errorNumber = lodepng::decode(negYBuffer, negyWidth, negyHeight, negyName, LodePNGColorType::LCT_RGB);
+		const char * errorMessage;
+		if (errorNumber != 0)
+			errorMessage = lodepng_error_text(errorNumber);
+	}
+
+	std::vector<unsigned char> negzBuffer;
+	unsigned negzWidth, negzHeight;
+	{
+		std::string negzName(textureFolder);
+
+		negzName += negzTextureName;
+
+		auto errorNumber = lodepng::decode(negzBuffer, negzWidth, negzHeight, negzName, LodePNGColorType::LCT_RGB);
+		const char * errorMessage;
+		if (errorNumber != 0)
+			errorMessage = lodepng_error_text(errorNumber);
+	}
+
+	std::vector<unsigned char> posXBuffer;
+	unsigned posxWidth, posxHeight;
+	{
+		std::string posXName(textureFolder);
+
+		posXName += posxTextureName;
+
+		auto errorNumber = lodepng::decode(posXBuffer, posxWidth, posxHeight, posXName, LodePNGColorType::LCT_RGB);
+		const char * errorMessage;
+		if (errorNumber != 0)
+			errorMessage = lodepng_error_text(errorNumber);
+	}
+
+	std::vector<unsigned char> posYBuffer;
+	unsigned posyWidth, posyHeight;
+	{
+		std::string posyName(textureFolder);
+
+		posyName += posyTextureName;
+
+		auto errorNumber = lodepng::decode(posYBuffer, posyWidth, posyHeight, posyName, LodePNGColorType::LCT_RGB);
+		const char * errorMessage;
+		if (errorNumber != 0)
+			errorMessage = lodepng_error_text(errorNumber);
+	}
+
+	std::vector<unsigned char> poszBuffer;
+	unsigned poszWidth, poszHeight;
+	{
+		std::string poszName(textureFolder);
+
+		poszName += poszTextureName;
+
+		auto errorNumber = lodepng::decode(poszBuffer, poszWidth, poszHeight, poszName, LodePNGColorType::LCT_RGB);
+		const char * errorMessage;
+		if (errorNumber != 0)
+			errorMessage = lodepng_error_text(errorNumber);
+	}
+
+	cubeMap.Initialize();
+	cubeMap.SetImage(cy::GLTextureCubeMap::NEGATIVE_X, negXBuffer.data(), 3, negxWidth, negxHeight);
+	cubeMap.SetImage(cy::GLTextureCubeMap::NEGATIVE_Y, negYBuffer.data(), 3, negyWidth, negyHeight);
+	cubeMap.SetImage(cy::GLTextureCubeMap::NEGATIVE_Z, negzBuffer.data(), 3, negzWidth, negzHeight);
+	cubeMap.SetImage(cy::GLTextureCubeMap::POSITIVE_X, posXBuffer.data(), 3, posxWidth, posxHeight);
+	cubeMap.SetImage(cy::GLTextureCubeMap::POSITIVE_Y, posYBuffer.data(), 3, posyWidth, posyHeight);
+	cubeMap.SetImage(cy::GLTextureCubeMap::POSITIVE_Z, poszBuffer.data(), 3, poszWidth, poszHeight);
+
+	cubeMap.BuildMipmaps();
+
+	glGenVertexArrays(1, &g_vertexArrayBoxID);
+	glBindVertexArray(g_vertexArrayBoxID);
+
+	// Generate 1 buffer, put the resulting identifier in vertexbuffer
+	glGenBuffers(1, &g_boxVertexBuffer);
+	// The following commands will talk about our 'vertexbuffer' buffer
+	glBindBuffer(GL_ARRAY_BUFFER, g_boxVertexBuffer);
+	// Give our vertices to OpenGL.
+	glBufferData(GL_ARRAY_BUFFER, vertexBufferSize, vertexDataBuffer.data(), GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(
+		0,
+		3,                  // size
+		GL_FLOAT,           // type
+		GL_FALSE,           // normalized?
+		sizeof(cy::Point3f),    // stride
+		(void*)0            // array buffer offset
+	);
+
 	return true;
 }
 
@@ -311,6 +469,12 @@ bool OpenGLWindow::LoadAndBuildShaders()
 	vertexShaderPath = "Shaders\\VertexShaderPlane.glsl";
 	fragmentShaderPath = "Shaders\\FragmentShaderPlane.glsl";
 	success = g_shaderProgramPlane->BuildFiles(vertexShaderPath, fragmentShaderPath);
+
+	g_shaderProgramBox->CreateProgram();
+
+	vertexShaderPath = "Shaders\\VertexShaderBox.glsl";
+	fragmentShaderPath = "Shaders\\FragmentShaderBox.glsl";
+	success = g_shaderProgramBox->BuildFiles(vertexShaderPath, fragmentShaderPath);
 
 	return success;
 }
@@ -333,10 +497,10 @@ void OpenGLWindow::CalculateMVPTeapot()
 	positionMatrix.SetTrans(position);
 
 	cy::Point3f rotationAxis(1, 0, 0);
-	rotationMatrix.SetRotation(rotationAxis, -1.5708f + mouseXTeapot);
+	rotationMatrix.SetRotation(rotationAxis, mouseYTeapot);
 
 	cy::Point3f secondRotationAxis(0, 1, 0);
-	secondRotationMatrix.SetRotation(secondRotationAxis, -1.5708f + mouseYTeapot);
+	secondRotationMatrix.SetRotation(secondRotationAxis, -mouseXTeapot);
 
 	viewMatrix =  positionMatrix * rotationMatrix * secondRotationMatrix;
 
@@ -380,9 +544,9 @@ void OpenGLWindow::CalculateMVPTeapot()
 	g_shaderProgram->SetUniform3("lightPosition", 1, lightPosition.Data());
 	g_shaderProgram->SetUniform3("cameraPosition", 1, position.Data());
 
-	cy::Point3f lightAmbientInt(1, 1, 1);
-	cy::Point3f lightDiffuseInt(1, 1, 1);
-	cy::Point3f lightSpecularInt(1, 1, 1);
+	cy::Point3f lightAmbientInt(2, 2, 2);
+	cy::Point3f lightDiffuseInt(2, 2, 2);
+	cy::Point3f lightSpecularInt(2, 2,2);
 
 	g_shaderProgram->SetUniform3("lightAmbientIntensity", 1, lightAmbientInt.Data());
 	g_shaderProgram->SetUniform3("lightDiffuseIntensity", 1, lightDiffuseInt.Data());
@@ -396,7 +560,7 @@ void OpenGLWindow::CalculateMVPTeapot()
 	g_shaderProgram->SetUniform3("matDiffuseReflectance", 1, matDiffuseReflect.Data());
 	g_shaderProgram->SetUniform3("matSpecularReflectance", 1, matSpecularReflect.Data());
 
-	g_shaderProgram->SetUniform("matShininess", 64.0f);
+	g_shaderProgram->SetUniform("matShininess", 32.0f);
 }
 
 void OpenGLWindow::CalculateMVPPlane()
@@ -420,7 +584,7 @@ void OpenGLWindow::CalculateMVPPlane()
 	rotationMatrix.SetRotation(rotationAxis, mouseXPlane);
 
 	cy::Point3f secondRotationAxis(0, 1, 0);
-	secondRotationMatrix.SetRotation(secondRotationAxis,mouseYPlane);
+	secondRotationMatrix.SetRotation(secondRotationAxis, mouseYPlane);
 
 	viewMatrix = positionMatrix * rotationMatrix * secondRotationMatrix;
 
@@ -483,15 +647,54 @@ void OpenGLWindow::CalculateMVPPlane()
 	g_shaderProgram->SetUniform("matShininess", 64.0f);
 }
 
+void OpenGLWindow::CalculateMVPBox()
+{
+	cy::Matrix4f projectionMatrix;
+	projectionMatrix.SetIdentity();
+	projectionMatrix.SetPerspective(45.0f, windowWidth / windowHeight, 0.1f, 100.0f);
+
+	cy::Matrix4f viewMatrix;
+	viewMatrix.SetIdentity();
+
+	cy::Matrix4f positionMatrix;
+	cy::Matrix4f rotationMatrix;
+	cy::Matrix4f secondRotationMatrix;
+
+	cy::Point3f rotationAxis(1, 0, 0);
+	rotationMatrix.SetRotation(rotationAxis, mouseYTeapot);
+
+	cy::Point3f secondRotationAxis(0, 1, 0);
+	secondRotationMatrix.SetRotation(secondRotationAxis, -mouseXTeapot);
+
+	viewMatrix = rotationMatrix * secondRotationMatrix;
+
+	g_shaderProgramBox->Bind();
+
+	g_shaderProgramBox->SetUniformMatrix4("V", viewMatrix.data);
+	g_shaderProgramBox->SetUniformMatrix4("P", projectionMatrix.data);
+}
+
 void OpenGLWindow::Display()
 {
 
 	{
-		g_renderTexture->Bind();
 
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glClearColor(0, 0, 0, 1);
 
+		glDepthMask(GL_FALSE);
+		g_shaderProgramBox->Bind();
+		CalculateMVPBox();
+		glBindVertexArray(g_vertexArrayBoxID);
+
+		glActiveTexture(GL_TEXTURE0);
+		cubeMap.Bind();
+
+		glDrawArrays(GL_TRIANGLES, 0, nrOfBoxVertices);
+		glDepthMask(GL_TRUE);
+	}
+
+	{
 		g_shaderProgram->Bind();
 		CalculateMVPTeapot();
 		glBindVertexArray(g_vertexArrayID);
@@ -502,27 +705,13 @@ void OpenGLWindow::Display()
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, g_textureIDSpec);
 
+		glActiveTexture(GL_TEXTURE2);
+		cubeMap.Bind();
+
 		glDrawArrays(GL_TRIANGLES, 0, nrOfVertices);
-
-		g_renderTexture->Unbind();
 	}
-	{
-
-
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		glClearColor(1, 0, 0, 1);
-		glBindVertexArray(g_vertexArrayPlaneID);
-		g_shaderProgramPlane->Bind();
-		CalculateMVPPlane();
-
-		glActiveTexture(GL_TEXTURE0);
-		g_renderTexture->BindTexture();
-
-		glDrawArrays(GL_TRIANGLES, 0, nrOfPlaneVertices);
 
 		glutSwapBuffers();
-	}
-
 }
 
 void OpenGLWindow::Keyboard(unsigned char key, int x, int y)
