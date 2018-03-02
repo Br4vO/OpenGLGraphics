@@ -17,7 +17,8 @@ static GLuint g_vertexBuffer;
 static GLuint g_normalBuffer;
 static GLuint g_textureCoordBuffer;
 
-static GLuint g_renderVertexBuffer;
+static GLuint g_planeVertexBuffer;
+static GLuint g_planeNormalBuffer;
 
 static GLuint g_boxVertexBuffer;
 static GLuint g_boxNormalBuffer;
@@ -132,13 +133,13 @@ bool OpenGLWindow::ExtractDataAndGiveToOpenGL(const char * filename)
 	{
 		auto face = vertexData->F(i);
 		auto faceNormal = vertexData->FN(i);
-		auto faceTexture = vertexData->FT(i);
+		//auto faceTexture = vertexData->FT(i);
 
 		for (unsigned int j = 0; j < 3; j++)
 		{
 			auto vertexIndex = face.v[j];
 			auto vertexNormalIndex = faceNormal.v[j];
-			auto vertexTextureIndex = faceTexture.v[j];
+			//auto vertexTextureIndex = faceTexture.v[j];
 
 			cy::Point3f vertex = vertexData->V(vertexIndex);
 			vertexDataBuffer.push_back(vertex);
@@ -146,36 +147,36 @@ bool OpenGLWindow::ExtractDataAndGiveToOpenGL(const char * filename)
 			cy::Point3f normal = vertexData->VN(vertexNormalIndex);
 			normalDataBuffer.push_back(normal);
 
-			cy::Point2f textureVertex = cy::Point2f(vertexData->VT(vertexTextureIndex).x, vertexData->VT(vertexTextureIndex).y);
-			vertexTextureDataBuffer.push_back(textureVertex);
+			//cy::Point2f textureVertex = cy::Point2f(vertexData->VT(vertexTextureIndex).x, vertexData->VT(vertexTextureIndex).y);
+			//vertexTextureDataBuffer.push_back(textureVertex);
 		}
 	}
-	/*const char * textureFolder = "Teapot/";
+	const char * textureFolder = "Teapot/";
 
-	std::vector<unsigned char> diffuseBuffer;
-	unsigned dw, dh;
-	{
-		std::string diffuseName(textureFolder);
+	//std::vector<unsigned char> diffuseBuffer;
+	//unsigned dw, dh;
+	//{
+	//	std::string diffuseName(textureFolder);
 
-		diffuseName += vertexData->M(0).map_Kd.data;
+	//	diffuseName += vertexData->M(0).map_Kd.data;
 
-		auto errorNumber = lodepng::decode(diffuseBuffer, dw, dh, diffuseName, LodePNGColorType::LCT_RGB);
-		const char * errorMessage;
-		if (errorNumber != 0)
-			errorMessage = lodepng_error_text(errorNumber);
-	}
+	//	auto errorNumber = lodepng::decode(diffuseBuffer, dw, dh, diffuseName, LodePNGColorType::LCT_RGB);
+	//	const char * errorMessage;
+	//	if (errorNumber != 0)
+	//		errorMessage = lodepng_error_text(errorNumber);
+	//}
 
-	std::vector<unsigned char> specularBuffer;
-	unsigned sw, sh;
-	{
-		std::string specularName(textureFolder);
+	//std::vector<unsigned char> specularBuffer;
+	//unsigned sw, sh;
+	//{
+	//	std::string specularName(textureFolder);
 
-		specularName += vertexData->M(0).map_Ks.data;
-		auto errorNumber = lodepng::decode(specularBuffer, sw, sh, specularName, LodePNGColorType::LCT_RGB);
-		const char * errorMessage;
-		if (errorNumber != 0)
-			errorMessage = lodepng_error_text(errorNumber);
-	}*/
+	//	specularName += vertexData->M(0).map_Ks.data;
+	//	auto errorNumber = lodepng::decode(specularBuffer, sw, sh, specularName, LodePNGColorType::LCT_RGB);
+	//	const char * errorMessage;
+	//	if (errorNumber != 0)
+	//		errorMessage = lodepng_error_text(errorNumber);
+	//}
 
 	glGenVertexArrays(1, &g_vertexArrayID);
 	glBindVertexArray(g_vertexArrayID);
@@ -212,21 +213,21 @@ bool OpenGLWindow::ExtractDataAndGiveToOpenGL(const char * filename)
 		(void*)0          // array buffer offset
 	);
 
-	// Generate 1 buffer, put the resulting identifier in vertexbuffer
-	glGenBuffers(1, &g_textureCoordBuffer);
-	// The following commands will talk about our 'vertexbuffer' buffer
-	glBindBuffer(GL_ARRAY_BUFFER, g_textureCoordBuffer);
-	//// Give our vertices to OpenGL.
-	glBufferData(GL_ARRAY_BUFFER, vertexTextureBufferSize, vertexTextureDataBuffer.data(), GL_STATIC_DRAW);
-	glEnableVertexAttribArray(2);
-	glVertexAttribPointer(
-		2,
-		2,                  // size
-		GL_FLOAT,           // type
-		GL_FALSE,           // normalized?
-		0,    // stride
-		(void*)0          // array buffer offset
-	);
+	//// Generate 1 buffer, put the resulting identifier in vertexbuffer
+	//glGenBuffers(1, &g_textureCoordBuffer);
+	//// The following commands will talk about our 'vertexbuffer' buffer
+	//glBindBuffer(GL_ARRAY_BUFFER, g_textureCoordBuffer);
+	////// Give our vertices to OpenGL.
+	//glBufferData(GL_ARRAY_BUFFER, vertexTextureBufferSize, vertexTextureDataBuffer.data(), GL_STATIC_DRAW);
+	//glEnableVertexAttribArray(2);
+	//glVertexAttribPointer(
+	//	2,
+	//	2,                  // size
+	//	GL_FLOAT,           // type
+	//	GL_FALSE,           // normalized?
+	//	0,    // stride
+	//	(void*)0          // array buffer offset
+	//);
 
 	//glGenTextures(1, &g_textureIDDiffuse);
 
@@ -255,21 +256,21 @@ bool OpenGLWindow::ExtractDataAndGiveToOpenGL(const char * filename)
 bool OpenGLWindow::GeneratePlane()
 {
 	const GLfloat quad_vertex_buffer_data[] = {
-		-10.0f, -10.0f, 0.0f,
-		10.0f, -10.0f, 0.0f,
-		-10.0f,  10.0f, 0.0f,
-		-10.0f,  10.0f,0.0f,
-		10.0f, -10.0f, 0.0f,
-		10.0f,  10.0f, 0.0f,
+		20.0f, 0.0f, 20.0f,
+		-20.0f, 0.0f, -20.0f,
+		-20.0f,  0.0f, 20.0f,
+		20.0f,  0.0f, 20.0f,
+		20.0f, 0.0f, -20.0f,
+		-20.0f,  0.0f, -20.0f,
 	};
 
 	glGenVertexArrays(1, &g_vertexArrayPlaneID);
 	glBindVertexArray(g_vertexArrayPlaneID);
 
 	// Generate 1 buffer, put the resulting identifier in vertexbuffer
-	glGenBuffers(1, &g_renderVertexBuffer);
+	glGenBuffers(1, &g_planeVertexBuffer);
 	// The following commands will talk about our 'vertexbuffer' buffer
-	glBindBuffer(GL_ARRAY_BUFFER, g_renderVertexBuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, g_planeVertexBuffer);
 	// Give our vertices to OpenGL.
 	glBufferData(GL_ARRAY_BUFFER, sizeof(quad_vertex_buffer_data), quad_vertex_buffer_data, GL_STATIC_DRAW);
 	glEnableVertexAttribArray(0);
@@ -280,6 +281,43 @@ bool OpenGLWindow::GeneratePlane()
 		GL_FALSE,           // normalized?
 		sizeof(cy::Point3f),    // stride
 		(void*)0            // array buffer offset
+	);
+
+	std::vector<cy::Point3f> normals;
+
+	for (unsigned int i = 0; i < nrOfPlaneVertices * 3; i+=9)
+	{
+		cy::Point3f A(quad_vertex_buffer_data[i], quad_vertex_buffer_data[i + 1], quad_vertex_buffer_data[i + 2]);
+		cy::Point3f B(quad_vertex_buffer_data[i+3], quad_vertex_buffer_data[i + 4], quad_vertex_buffer_data[i + 5]);
+		cy::Point3f C(quad_vertex_buffer_data[i+6], quad_vertex_buffer_data[i + 7], quad_vertex_buffer_data[i + 8]);
+
+		cy::Point3f N = (A - B).Cross(B - C);
+		//cy::Point3f N(0.0f, 0.0f, 1.0f);
+
+		if (N.Length() > 0)
+		{
+			N.Normalize();
+			normals.push_back(N);
+			normals.push_back(N);
+			normals.push_back(N);
+		}
+
+	}
+
+	// Generate 1 buffer, put the resulting identifier in vertexbuffer
+	glGenBuffers(1, &g_planeNormalBuffer);
+	// The following commands will talk about our 'vertexbuffer' buffer
+	glBindBuffer(GL_ARRAY_BUFFER, g_planeNormalBuffer);
+	//// Give our vertices to OpenGL.
+	glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(cy::Point3f), normals.data(), GL_STATIC_DRAW);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(
+		1,
+		3,                  // size
+		GL_FLOAT,           // type
+		GL_TRUE,           // normalized?
+		sizeof(cy::Point3f),    // stride
+		(void*)0          // array buffer offset
 	);
 
 	const GLfloat UVs[] = {
@@ -500,7 +538,7 @@ void OpenGLWindow::CalculateMVPTeapot()
 	rotationMatrix.SetRotation(rotationAxis, mouseYTeapot);
 
 	cy::Point3f secondRotationAxis(0, 1, 0);
-	secondRotationMatrix.SetRotation(secondRotationAxis, -mouseXTeapot);
+	secondRotationMatrix.SetRotation(secondRotationAxis, mouseXTeapot);
 
 	viewMatrix =  positionMatrix * rotationMatrix * secondRotationMatrix;
 
@@ -577,14 +615,14 @@ void OpenGLWindow::CalculateMVPPlane()
 	cy::Matrix4f rotationMatrix;
 	cy::Matrix4f secondRotationMatrix;
 
-	cy::Point3f position(0, 0, -40 + mouseZPlane);
+	cy::Point3f position(0, 0, -40 + mouseZTeapot);
 	positionMatrix.SetTrans(position);
 
 	cy::Point3f rotationAxis(1, 0, 0);
-	rotationMatrix.SetRotation(rotationAxis, mouseXPlane);
+	rotationMatrix.SetRotation(rotationAxis, mouseYTeapot);
 
 	cy::Point3f secondRotationAxis(0, 1, 0);
-	secondRotationMatrix.SetRotation(secondRotationAxis, mouseYPlane);
+	secondRotationMatrix.SetRotation(secondRotationAxis, mouseXTeapot);
 
 	viewMatrix = positionMatrix * rotationMatrix * secondRotationMatrix;
 
@@ -604,13 +642,13 @@ void OpenGLWindow::CalculateMVPPlane()
 	cy::Matrix4f MVP = projectionMatrix * viewMatrix * modelMatrix;
 
 
-	g_shaderProgram->Bind();
-	g_shaderProgram->SetUniformMatrix4("MVP", MVP.data);
-	g_shaderProgram->SetUniformMatrix3("MV", MV.data);
+	g_shaderProgramPlane->Bind();
+	g_shaderProgramPlane->SetUniformMatrix4("MVP", MVP.data);
+	g_shaderProgramPlane->SetUniformMatrix3("MV", MV.data);
 
-	g_shaderProgram->SetUniformMatrix4("ModelMat", modelMatrix.data);
-	g_shaderProgram->SetUniformMatrix4("ViewMat", viewMatrix.data);
-	g_shaderProgram->SetUniformMatrix4("ProjMat", projectionMatrix.data);
+	g_shaderProgramPlane->SetUniformMatrix4("ModelMat", modelMatrix.data);
+	g_shaderProgramPlane->SetUniformMatrix4("ViewMat", viewMatrix.data);
+	g_shaderProgramPlane->SetUniformMatrix4("ProjMat", projectionMatrix.data);
 
 	cy::Matrix4f lightRotationMatrix;
 	cy::Matrix4f lightTranslationMatrix;
@@ -625,26 +663,26 @@ void OpenGLWindow::CalculateMVPPlane()
 	lightPosition = lightMatrix.GetTrans();
 
 
-	g_shaderProgram->SetUniform3("lightPosition", 1, lightPosition.Data());
-	g_shaderProgram->SetUniform3("cameraPosition", 1, position.Data());
+	g_shaderProgramPlane->SetUniform3("lightPosition", 1, lightPosition.Data());
+	g_shaderProgramPlane->SetUniform3("cameraPosition", 1, position.Data());
 
 	cy::Point3f lightAmbientInt(1, 1, 1);
 	cy::Point3f lightDiffuseInt(1, 1, 1);
 	cy::Point3f lightSpecularInt(1, 1, 1);
 
-	g_shaderProgram->SetUniform3("lightAmbientIntensity", 1, lightAmbientInt.Data());
-	g_shaderProgram->SetUniform3("lightDiffuseIntensity", 1, lightDiffuseInt.Data());
-	g_shaderProgram->SetUniform3("lightSpecularIntensity", 1, lightSpecularInt.Data());
+	g_shaderProgramPlane->SetUniform3("lightAmbientIntensity", 1, lightAmbientInt.Data());
+	g_shaderProgramPlane->SetUniform3("lightDiffuseIntensity", 1, lightDiffuseInt.Data());
+	g_shaderProgramPlane->SetUniform3("lightSpecularIntensity", 1, lightSpecularInt.Data());
 
 	cy::Point3f matAmbientReflect(0.5, 0.5, 0.5);
 	cy::Point3f matDiffuseReflect(0.5, 0.5, 0.5);
 	cy::Point3f matSpecularReflect(0.5, 0.5, 0.5);
 
-	g_shaderProgram->SetUniform3("matAmbientReflectance", 1, matAmbientReflect.Data());
-	g_shaderProgram->SetUniform3("matDiffuseReflectance", 1, matDiffuseReflect.Data());
-	g_shaderProgram->SetUniform3("matSpecularReflectance", 1, matSpecularReflect.Data());
+	g_shaderProgramPlane->SetUniform3("matAmbientReflectance", 1, matAmbientReflect.Data());
+	g_shaderProgramPlane->SetUniform3("matDiffuseReflectance", 1, matDiffuseReflect.Data());
+	g_shaderProgramPlane->SetUniform3("matSpecularReflectance", 1, matSpecularReflect.Data());
 
-	g_shaderProgram->SetUniform("matShininess", 64.0f);
+	g_shaderProgramPlane->SetUniform("matShininess", 64.0f);
 }
 
 void OpenGLWindow::CalculateMVPBox()
@@ -664,7 +702,7 @@ void OpenGLWindow::CalculateMVPBox()
 	rotationMatrix.SetRotation(rotationAxis, mouseYTeapot);
 
 	cy::Point3f secondRotationAxis(0, 1, 0);
-	secondRotationMatrix.SetRotation(secondRotationAxis, -mouseXTeapot);
+	secondRotationMatrix.SetRotation(secondRotationAxis, mouseXTeapot);
 
 	viewMatrix = rotationMatrix * secondRotationMatrix;
 
@@ -710,6 +748,54 @@ void OpenGLWindow::Display()
 
 		glDrawArrays(GL_TRIANGLES, 0, nrOfVertices);
 	}
+
+
+	{
+		g_renderTexture->Bind();
+
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glClearColor(0, 0, 0, 1);
+
+		g_shaderProgram->Bind();
+		CalculateMVPTeapot();
+		glBindVertexArray(g_vertexArrayID);
+
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, g_textureIDDiffuse);
+
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, g_textureIDSpec);
+
+		glActiveTexture(GL_TEXTURE2);
+		cubeMap.Bind();
+
+		glDrawArrays(GL_TRIANGLES, 0, nrOfVertices);
+
+		g_renderTexture->Unbind();
+	}
+
+	{
+		g_shaderProgramPlane->Bind();
+		CalculateMVPPlane();
+		glBindVertexArray(g_vertexArrayPlaneID);
+
+		glActiveTexture(GL_TEXTURE0);
+		g_renderTexture->BindTexture();
+		
+		glDrawArrays(GL_TRIANGLES, 0, nrOfPlaneVertices);
+	}
+
+	{
+		g_shaderProgramPlane->Bind();
+		CalculateMVPPlane();
+		glBindVertexArray(g_vertexArrayPlaneID);
+
+		glActiveTexture(GL_TEXTURE0);
+		cubeMap.Bind();
+
+		glDrawArrays(GL_TRIANGLES, 0, nrOfPlaneVertices);
+	}
+
 
 		glutSwapBuffers();
 }

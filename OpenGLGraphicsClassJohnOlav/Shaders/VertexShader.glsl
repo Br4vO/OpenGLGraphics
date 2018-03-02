@@ -9,6 +9,10 @@ layout(location = 1) out vec3 o_light;
 layout(location = 2) out vec3 o_camera;
 layout(location = 3) out vec2 o_UV;
 
+layout(location = 4) out vec3 pos_eye;
+layout(location = 5) out vec3 n_eye;
+
+
 
 uniform mat4 MVP;
 uniform mat3 MV;
@@ -33,4 +37,7 @@ void main()
 	gl_Position =  ProjMat * ViewMat * worldPosition;
 
 	o_UV = vertexTexture;
+
+	pos_eye = vec3(ViewMat * ModelMat * vec4(vertexPosition_modelspace, 1.0));
+	n_eye = vec3(ViewMat * ModelMat * vec4(vertexNormal, 0.0));
 }
