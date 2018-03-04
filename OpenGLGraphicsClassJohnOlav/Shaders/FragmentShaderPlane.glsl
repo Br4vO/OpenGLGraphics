@@ -22,7 +22,7 @@ uniform float matShininess;
 
 uniform mat4 ViewMat;
 
-uniform sampler2DShadow shadow;
+uniform sampler2D shadow;
 
 uniform samplerCube cube_texture;
 
@@ -69,11 +69,11 @@ void main()
 
    float visibility = 1.0;
 
-	visibility = textureProj(shadow, i_shadowCoord);
+	//visibility = textureProj(shadow, i_shadowCoord);
 
    
 	//color = texture2D(texUnitS, i_UV) * texture2D(texUnitD, i_UV) ;
 	//color = texture(cube_texture, R) * texture(texUnitD, i_UV);
-	color = vec4(0.5,0.5,0.5,1) * vec4((Iamb + (visibility*Idif) + (visibility*Ispe)), 1);
-	//color = texture2D(texUnitD, i_UV);
+	//color = vec4(0.5,0.5,0.5,1) * vec4((Iamb + (visibility*Idif) + (visibility*Ispe)), 1);
+	color = texture2D(shadow, i_UV);
 }

@@ -98,7 +98,7 @@ void OpenGLWindow::Init(const char * filename)
 	g_renderTexture->SetTextureMaxAnisotropy();
 	g_renderTexture->BuildTextureMipmaps();
 
-	g_shadowTexture->Initialize(true, 1024,1024);
+	g_shadowTexture->Initialize(false, 1024,1024);
 
 	matrixPointer = new float[16];
 
