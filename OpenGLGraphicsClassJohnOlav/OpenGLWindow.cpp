@@ -563,8 +563,8 @@ void OpenGLWindow::CalculateMVPTeapot()
 	cy::Matrix4f lightTranslationMatrix;
 	lightTranslationMatrix.SetIdentity();
 	lightRotationMatrix.SetIdentity();
-	cy::Point3f ligthRotationAngle(0, 1, 0);
-	cy::Point3f lightPosition(20, 20, 0);
+	cy::Point3f ligthRotationAngle(0, 0, 1);
+	cy::Point3f lightPosition(5, 20, 20);
 
 	lightRotationMatrix.SetRotation(ligthRotationAngle, lightRotation);
 	lightTranslationMatrix.AddTrans(lightPosition);
@@ -577,7 +577,7 @@ void OpenGLWindow::CalculateMVPTeapot()
 
 	vertexData->ComputeBoundingBox();
 	cy::Point3f objectSizes = vertexData->GetBoundMax() - vertexData->GetBoundMin();
-	cy::Point3f modelTranslation(0, 0, 0/*-(objectSizes.z / 2)*/);
+	cy::Point3f modelTranslation(0, 0, -(objectSizes.z / 2));
 	//cy::Point3f modelTranslation(lightPosition);
 	modelMatrix.SetTrans(modelTranslation);
 
@@ -673,8 +673,8 @@ void OpenGLWindow::CalculateMVPPlane()
 	cy::Matrix4f lightTranslationMatrix;
 	lightTranslationMatrix.SetIdentity();
 	lightRotationMatrix.SetIdentity();
-	cy::Point3f ligthRotationAngle(0, 1, 0);
-	cy::Point3f lightPosition(20, 20, 0);
+	cy::Point3f ligthRotationAngle(0, 0, 1);
+	cy::Point3f lightPosition(5, 20, 20);
 
 	lightRotationMatrix.SetRotation(ligthRotationAngle, lightRotation);
 	lightTranslationMatrix.AddTrans(lightPosition);
@@ -736,14 +736,14 @@ void OpenGLWindow::CalculateMVPShadow()
 {
 	cy::Matrix4f projectionMatrix;
 	projectionMatrix.SetIdentity();
-	projectionMatrix.SetPerspective(45.0f, 1, 0.1f, 100.0f);
+	projectionMatrix.SetPerspective(90.0f, 1, 2.0f, 100.0f);
 
 	cy::Matrix4f lightRotationMatrix;
 	cy::Matrix4f lightTranslationMatrix;
 	lightTranslationMatrix.SetIdentity();
 	lightRotationMatrix.SetIdentity();
-	cy::Point3f ligthRotationAngle(0, 1, 0);
-	cy::Point3f lightPosition(20, 20, 0);
+	cy::Point3f ligthRotationAngle(0, 0, 1);
+	cy::Point3f lightPosition(5, 20, 20);
 
 	lightRotationMatrix.SetRotation(ligthRotationAngle, lightRotation);
 	lightTranslationMatrix.AddTrans(lightPosition);
@@ -755,7 +755,7 @@ void OpenGLWindow::CalculateMVPShadow()
 	viewMatrix.SetIdentity();
 
 	//viewMatrix = lightMatrix;
-	viewMatrix.SetView(lightPosition, cy::Point3f(0,0,0), cy::Point3f(0, 1, 0));
+	viewMatrix.SetView(lightPosition, -lightPosition, cy::Point3f(0, 1, 0));
 	
 
 	cy::Matrix4f modelMatrix;
