@@ -12,7 +12,7 @@ layout(location = 3) out vec2 o_UV;
 layout(location = 4) out vec3 pos_eye;
 layout(location = 5) out vec3 n_eye;
 
-
+layout(location = 6) out vec4 o_shadowCoord;
 
 uniform mat4 MVP;
 uniform mat3 MV;
@@ -20,6 +20,7 @@ uniform mat3 MV;
 uniform mat4 ModelMat;
 uniform mat4 ViewMat;
 uniform mat4 ProjMat;
+uniform mat4 DepthBiasMVP;
 
 uniform vec3 lightPosition;
 uniform vec3 cameraPosition;
@@ -40,4 +41,5 @@ void main()
 
 	pos_eye = vec3(ViewMat * ModelMat * vec4(vertexPosition_modelspace, 1.0));
 	n_eye = vec3(ViewMat * ModelMat * vec4(vertexNormal, 0.0));
+	o_shadowCoord = DepthBiasMVP * vec4(vertexPosition_modelspace, 1);
 }

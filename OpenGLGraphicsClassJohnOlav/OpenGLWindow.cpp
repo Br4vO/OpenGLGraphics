@@ -34,9 +34,12 @@ static float* matrixPointer;
 static cy::GLSLProgram* g_shaderProgram;
 static cy::GLSLProgram* g_shaderProgramPlane;
 static cy::GLSLProgram* g_shaderProgramBox;
+static cy::GLSLProgram* g_shaderProgramShadow;
 
 static cy::GLRenderTexture<GL_TEXTURE_2D>* g_renderTexture;
+static cy::GLRenderDepth2D* g_shadowTexture;
 static cy::GLTextureCubeMap cubeMap;
+
 
 static GLuint MatrixID;
 
@@ -48,7 +51,7 @@ static float mouseZPlane;
 static float mouseXPlane;
 static float mouseYPlane;
 
-static float lightRotation;
+static float lightRotation = 2;
 static bool ctrlDown;
 static bool altDown;
 
@@ -65,8 +68,10 @@ OpenGLWindow::~OpenGLWindow()
 	delete vertexData;
 	delete g_shaderProgram;
 	delete g_renderTexture;
+	delete g_shadowTexture;
 	delete g_shaderProgramPlane;
 	delete g_shaderProgramBox;
+	delete g_shaderProgramShadow;
 	delete[] matrixPointer;
 }
 
@@ -84,15 +89,16 @@ void OpenGLWindow::Init(const char * filename)
 	glEnable(GL_DEPTH_TEST);
 
 	vertexData = new cyTriMesh();
-	g_shaderProgram = new cy::GLSLProgram();
-	g_shaderProgramPlane = new cy::GLSLProgram();
-	g_shaderProgramBox = new cy::GLSLProgram();
+
 	g_renderTexture = new cy::GLRenderTexture<GL_TEXTURE_2D>();
+	g_shadowTexture = new cy::GLRenderDepth2D();
 
 	g_renderTexture->Initialize(true, 3, windowWidth, windowHeight);
 	g_renderTexture->SetTextureFilteringMode(GL_LINEAR, 0);
 	g_renderTexture->SetTextureMaxAnisotropy();
 	g_renderTexture->BuildTextureMipmaps();
+
+	g_shadowTexture->Initialize(true, 1024,1024);
 
 	matrixPointer = new float[16];
 
@@ -199,7 +205,7 @@ bool OpenGLWindow::ExtractDataAndGiveToOpenGL(const char * filename)
 
 	// Generate 1 buffer, put the resulting identifier in vertexbuffer
 	glGenBuffers(1, &g_normalBuffer);
-	// The following commands will talk about our 'verteø-æ.5xbuffer' buffer
+	// The following commands will talk about our 'vertexbuffer' buffer
 	glBindBuffer(GL_ARRAY_BUFFER, g_normalBuffer);
 	//// Give our vertices to OpenGL.
 	glBufferData(GL_ARRAY_BUFFER, normalBufferSize, normalDataBuffer.data(), GL_STATIC_DRAW);
@@ -495,6 +501,11 @@ bool OpenGLWindow::GenerateBox()
 
 bool OpenGLWindow::LoadAndBuildShaders()
 {
+	g_shaderProgram = new cy::GLSLProgram();
+	g_shaderProgramPlane = new cy::GLSLProgram();
+	g_shaderProgramBox = new cy::GLSLProgram();
+	g_shaderProgramShadow = new cy::GLSLProgram();
+
 	g_shaderProgram->CreateProgram();
 
 	const char * vertexShaderPath = "Shaders\\VertexShader.glsl";
@@ -513,6 +524,12 @@ bool OpenGLWindow::LoadAndBuildShaders()
 	vertexShaderPath = "Shaders\\VertexShaderBox.glsl";
 	fragmentShaderPath = "Shaders\\FragmentShaderBox.glsl";
 	success = g_shaderProgramBox->BuildFiles(vertexShaderPath, fragmentShaderPath);
+
+	g_shaderProgramShadow->CreateProgram();
+
+	vertexShaderPath = "Shaders\\VertexShaderShadow.glsl";
+	fragmentShaderPath = "Shaders\\FragmentShaderShadow.glsl";
+	success = g_shaderProgramShadow->BuildFiles(vertexShaderPath, fragmentShaderPath);
 
 	return success;
 }
@@ -542,12 +559,26 @@ void OpenGLWindow::CalculateMVPTeapot()
 
 	viewMatrix =  positionMatrix * rotationMatrix * secondRotationMatrix;
 
+	cy::Matrix4f lightRotationMatrix;
+	cy::Matrix4f lightTranslationMatrix;
+	lightTranslationMatrix.SetIdentity();
+	lightRotationMatrix.SetIdentity();
+	cy::Point3f ligthRotationAngle(0, 1, 0);
+	cy::Point3f lightPosition(20, 20, 0);
+
+	lightRotationMatrix.SetRotation(ligthRotationAngle, lightRotation);
+	lightTranslationMatrix.AddTrans(lightPosition);
+
+	cy::Matrix4f lightMatrix = lightRotationMatrix * lightTranslationMatrix;
+	lightPosition = lightMatrix.GetTrans();
+
 	cy::Matrix4f modelMatrix;
 	modelMatrix.SetIdentity();
 
 	vertexData->ComputeBoundingBox();
 	cy::Point3f objectSizes = vertexData->GetBoundMax() - vertexData->GetBoundMin();
-	cy::Point3f modelTranslation(0, 0, -(objectSizes.z / 2));
+	cy::Point3f modelTranslation(0, 0, 0/*-(objectSizes.z / 2)*/);
+	//cy::Point3f modelTranslation(lightPosition);
 	modelMatrix.SetTrans(modelTranslation);
 
 	cy::Matrix3f MV = viewMatrix.GetSubMatrix3() * modelMatrix.GetSubMatrix3();
@@ -565,18 +596,6 @@ void OpenGLWindow::CalculateMVPTeapot()
 	g_shaderProgram->SetUniformMatrix4("ModelMat", modelMatrix.data);
 	g_shaderProgram->SetUniformMatrix4("ViewMat", viewMatrix.data);
 	g_shaderProgram->SetUniformMatrix4("ProjMat", projectionMatrix.data);
-
-	cy::Matrix4f lightRotationMatrix;
-	cy::Matrix4f lightTranslationMatrix;
-	lightRotationMatrix.SetIdentity();
-	cy::Point3f ligthRotationAngle(0, 0, 1);
-	cy::Point3f lightPosition(0, 0, -100);
-
-	lightRotationMatrix.SetRotation(ligthRotationAngle, lightRotation);
-	lightTranslationMatrix.AddTrans(lightPosition);
-
-	cy::Matrix4f lightMatrix = lightRotationMatrix * lightTranslationMatrix;
-	lightPosition = lightMatrix.GetTrans();
 
 
 	g_shaderProgram->SetUniform3("lightPosition", 1, lightPosition.Data());
@@ -652,9 +671,10 @@ void OpenGLWindow::CalculateMVPPlane()
 
 	cy::Matrix4f lightRotationMatrix;
 	cy::Matrix4f lightTranslationMatrix;
+	lightTranslationMatrix.SetIdentity();
 	lightRotationMatrix.SetIdentity();
-	cy::Point3f ligthRotationAngle(0, 0, 1);
-	cy::Point3f lightPosition(0, 0, -100);
+	cy::Point3f ligthRotationAngle(0, 1, 0);
+	cy::Point3f lightPosition(20, 20, 0);
 
 	lightRotationMatrix.SetRotation(ligthRotationAngle, lightRotation);
 	lightTranslationMatrix.AddTrans(lightPosition);
@@ -712,6 +732,65 @@ void OpenGLWindow::CalculateMVPBox()
 	g_shaderProgramBox->SetUniformMatrix4("P", projectionMatrix.data);
 }
 
+void OpenGLWindow::CalculateMVPShadow()
+{
+	cy::Matrix4f projectionMatrix;
+	projectionMatrix.SetIdentity();
+	projectionMatrix.SetPerspective(45.0f, 1, 0.1f, 100.0f);
+
+	cy::Matrix4f lightRotationMatrix;
+	cy::Matrix4f lightTranslationMatrix;
+	lightTranslationMatrix.SetIdentity();
+	lightRotationMatrix.SetIdentity();
+	cy::Point3f ligthRotationAngle(0, 1, 0);
+	cy::Point3f lightPosition(20, 20, 0);
+
+	lightRotationMatrix.SetRotation(ligthRotationAngle, lightRotation);
+	lightTranslationMatrix.AddTrans(lightPosition);
+
+	cy::Matrix4f lightMatrix = lightRotationMatrix * lightTranslationMatrix;
+	lightPosition = lightMatrix.GetTrans();
+
+	cy::Matrix4f viewMatrix;
+	viewMatrix.SetIdentity();
+
+	//viewMatrix = lightMatrix;
+	viewMatrix.SetView(lightPosition, cy::Point3f(0,0,0), cy::Point3f(0, 1, 0));
+	
+
+	cy::Matrix4f modelMatrix;
+	modelMatrix.SetIdentity();
+
+	cy::Matrix4f MVP = projectionMatrix * viewMatrix * modelMatrix;
+
+
+	g_shaderProgramShadow->Bind();
+	g_shaderProgramShadow->SetUniformMatrix4("MVP", MVP.data);
+
+	//g_shaderProgramShadow->SetUniformMatrix4("ModelMat", modelMatrix.data);
+	//g_shaderProgramShadow->SetUniformMatrix4("ViewMat", viewMatrix.data);
+	//g_shaderProgramShadow->SetUniformMatrix4("ProjMat", projectionMatrix.data);
+
+
+	//g_shaderProgramShadow->SetUniform3("lightPosition", 1, lightPosition.Data());
+
+	cy::Matrix4f biasMatrix(
+		0.5, 0.0, 0.0, 0.0,
+		0.0, 0.5, 0.0, 0.0,
+		0.0, 0.0, 0.5, 0.0,
+		0.5, 0.5, 0.5, 1.0
+	);
+
+	cy::Matrix4f depthBiasMVP = biasMatrix * MVP;
+	g_shaderProgram->Bind();
+	g_shaderProgram->SetUniformMatrix4("DepthBiasMVP", depthBiasMVP.data);
+
+	g_shaderProgramPlane->Bind();
+	g_shaderProgramPlane->SetUniformMatrix4("DepthBiasMVP", depthBiasMVP.data);
+	
+	g_shaderProgramShadow->Bind();
+}
+
 void OpenGLWindow::Display()
 {
 
@@ -732,46 +811,37 @@ void OpenGLWindow::Display()
 		glDepthMask(GL_TRUE);
 	}
 
-	{
-		g_shaderProgram->Bind();
-		CalculateMVPTeapot();
-		glBindVertexArray(g_vertexArrayID);
-
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, g_textureIDDiffuse);
-
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, g_textureIDSpec);
-
-		glActiveTexture(GL_TEXTURE2);
-		cubeMap.Bind();
-
-		glDrawArrays(GL_TRIANGLES, 0, nrOfVertices);
-	}
-
 
 	{
-		g_renderTexture->Bind();
+		g_shadowTexture->Bind();
 
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glClearColor(0, 0, 0, 1);
 
+		g_shaderProgramShadow->Bind();
+		CalculateMVPShadow();
+		glBindVertexArray(g_vertexArrayID);
+
+		glDrawArrays(GL_TRIANGLES, 0, nrOfVertices);
+
+		g_shadowTexture->Unbind();
+	}
+
+	{
 		g_shaderProgram->Bind();
 		CalculateMVPTeapot();
 		glBindVertexArray(g_vertexArrayID);
 
+		//glActiveTexture(GL_TEXTURE0);
+		//glBindTexture(GL_TEXTURE_2D, g_textureIDDiffuse);
+
+		//glActiveTexture(GL_TEXTURE1);
+		//glBindTexture(GL_TEXTURE_2D, g_textureIDSpec);
+
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, g_textureIDDiffuse);
-
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, g_textureIDSpec);
-
-		glActiveTexture(GL_TEXTURE2);
-		cubeMap.Bind();
+		g_shadowTexture->BindTexture();
 
 		glDrawArrays(GL_TRIANGLES, 0, nrOfVertices);
-
-		g_renderTexture->Unbind();
 	}
 
 	{
@@ -780,18 +850,7 @@ void OpenGLWindow::Display()
 		glBindVertexArray(g_vertexArrayPlaneID);
 
 		glActiveTexture(GL_TEXTURE0);
-		g_renderTexture->BindTexture();
-		
-		glDrawArrays(GL_TRIANGLES, 0, nrOfPlaneVertices);
-	}
-
-	{
-		g_shaderProgramPlane->Bind();
-		CalculateMVPPlane();
-		glBindVertexArray(g_vertexArrayPlaneID);
-
-		glActiveTexture(GL_TEXTURE0);
-		cubeMap.Bind();
+		g_shadowTexture->BindTexture();
 
 		glDrawArrays(GL_TRIANGLES, 0, nrOfPlaneVertices);
 	}

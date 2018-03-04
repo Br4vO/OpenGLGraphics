@@ -9,6 +9,8 @@ layout(location = 3) in vec2 i_UV;
 layout(location = 4) in vec3 pos_eye;
 layout(location = 5) in vec3 n_eye;
 
+layout(location = 6) in vec4 i_shadowCoord;
+
 uniform vec3 lightAmbientIntensity;
 uniform vec3 lightDiffuseIntensity;
 uniform vec3 lightSpecularIntensity; 
@@ -20,7 +22,7 @@ uniform float matShininess;
 
 uniform mat4 ViewMat;
 
-uniform sampler2D texUnitD;
+uniform sampler2DShadow shadow;
 
 uniform samplerCube cube_texture;
 
@@ -65,8 +67,13 @@ void main()
    vec3 Idif = diffuseLighting(N, L);
    vec3 Ispe = specularLighting(N, L, V);
 
+   float visibility = 1.0;
+
+	visibility = textureProj(shadow, i_shadowCoord);
+
    
 	//color = texture2D(texUnitS, i_UV) * texture2D(texUnitD, i_UV) ;
 	//color = texture(cube_texture, R) * texture(texUnitD, i_UV);
-	color = texture(cube_texture, R);
+	color = vec4(0.5,0.5,0.5,1) * vec4((Iamb + (visibility*Idif) + (visibility*Ispe)), 1);
+	//color = texture2D(texUnitD, i_UV);
 }

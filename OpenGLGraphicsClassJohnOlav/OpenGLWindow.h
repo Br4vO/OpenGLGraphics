@@ -29,6 +29,7 @@ private:
 	static void CalculateMVPTeapot();
 	static void CalculateMVPPlane();
 	static void CalculateMVPBox();
+	static void CalculateMVPShadow();
 
 
 	//Event Functions
