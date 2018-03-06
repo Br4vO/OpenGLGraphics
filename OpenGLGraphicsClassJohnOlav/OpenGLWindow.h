@@ -26,7 +26,7 @@ private:
 	bool GenerateBox();
 
 	static bool LoadAndBuildShaders();
-	static void CalculateMVPTeapot();
+	static void CalculateMVPTeapot(bool i_camera);
 	static void CalculateMVPPlane();
 	static void CalculateMVPBox();
 	static void CalculateMVPShadow();

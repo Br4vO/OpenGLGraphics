@@ -22,7 +22,7 @@ uniform float matShininess;
 
 uniform mat4 ViewMat;
 
-uniform sampler2D shadow;
+uniform sampler2DShadow shadow;
 
 uniform samplerCube cube_texture;
 
@@ -67,13 +67,17 @@ void main()
    vec3 Idif = diffuseLighting(N, L);
    vec3 Ispe = specularLighting(N, L, V);
 
-   float visibility = 1.0;
-
-	//visibility = textureProj(shadow, i_shadowCoord);
+   
+   float bias = 0.005;
+   float visibility = textureProj( shadow, i_shadowCoord, bias);
+   if (visibility < i_shadowCoord.z/i_shadowCoord.w)
+	visibility = 0.0f;
 
    
 	//color = texture2D(texUnitS, i_UV) * texture2D(texUnitD, i_UV) ;
 	//color = texture(cube_texture, R) * texture(texUnitD, i_UV);
-	//color = vec4(0.5,0.5,0.5,1) * vec4((Iamb + (visibility*Idif) + (visibility*Ispe)), 1);
-	color = texture2D(shadow, i_UV);
+	color = vec4(0.5,0.5,0.5,1) * vec4((Iamb + (visibility*Idif) + (visibility*Ispe)), 1);
+	//color.xyz = vec3(visibility);
+	//color.a = 1;
+	//color = texture2D(shadow, i_UV);
 }
