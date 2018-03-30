@@ -51,7 +51,7 @@ vec3 specularLighting(in vec3 N, in vec3 L, in vec3 V)
    {
       // half vector
       vec3 H = normalize(L + V);
-      specularTerm = pow(dot(N, H), matShininess);
+      specularTerm = pow(clamp(dot(N, H), 0, 1), matShininess);
    }
    return matSpecularReflectance * lightSpecularIntensity * specularTerm;
 }
@@ -106,7 +106,7 @@ void main()
    
 	//color = texture2D(texUnitS, i_UV) * texture2D(texUnitD, i_UV) ;
 	//color = texture(cube_texture, R) * vec4((Iamb + Idif + Ispe), 1);
-	color = vec4(0.5,0.5,0.5,1) * vec4((Iamb + (visibility*Idif) /*+ (visibility*Ispe)*/), 1);
+	color = vec4(0.5,0.5,0.5,1) * vec4((Iamb + (visibility*Idif) + (visibility*Ispe)), 1);
 	//color.xyz = vec3(visibility);
 	//color.a = 1;
 }
