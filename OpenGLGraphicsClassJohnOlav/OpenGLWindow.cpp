@@ -778,9 +778,9 @@ void OpenGLWindow::CalculateMVPShadow()
 	//g_shaderProgramShadow->SetUniform3("lightPosition", 1, lightPosition.Data());
 
 	cy::Matrix4f biasMatrix(
-		0.5, 0.0, 0.0, 0.5,
-		0.0, 0.5, 0.0, 0.5,
-		0.0, 0.0, 0.5, 0.5,
+		0.5, 0.0, 0.0, 0,
+		0.0, 0.5, 0.0, 0,
+		0.0, 0.0, 0.5, 0,
 		0.5, 0.5, 0.5, 1.0
 	);
 

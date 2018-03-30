@@ -68,16 +68,18 @@ float CalcShadowFactor(vec4 LightSpacePos)
     float yOffset = 1.0/1024;
 
     float Factor = 0.0;
+	int nrOfSampling = 0;
 
-    for (int y = -1 ; y <= 1 ; y++) {
-        for (int x = -1 ; x <= 1 ; x++) {
+    for (int y = -1; y <= 1; y++) {
+        for (int x = -1; x <= 1; x++) {
             vec2 Offsets = vec2(x * xOffset, y * yOffset);
             vec3 UVC = vec3(UVCoords + Offsets, z + EPSILON);
             Factor += texture(shadow, UVC);
+			nrOfSampling ++;
         }
     }
 
-    return (0.5 + (Factor / 18.0));
+    return (0.5 + (Factor / nrOfSampling));
 }
 
 void main()
