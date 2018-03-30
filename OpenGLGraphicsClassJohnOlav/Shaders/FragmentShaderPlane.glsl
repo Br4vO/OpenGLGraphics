@@ -1,5 +1,10 @@
-#version 420
+#version 440
 
+
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_explicit_attrib_location : require
+
+#define EPSILON 0.00001
 
 layout(location = 0) in vec3 i_normal;
 layout(location = 1) in vec3 i_light;
@@ -11,22 +16,22 @@ layout(location = 5) in vec3 n_eye;
 
 layout(location = 6) in vec4 i_shadowCoord;
 
-uniform vec3 lightAmbientIntensity;
-uniform vec3 lightDiffuseIntensity;
-uniform vec3 lightSpecularIntensity; 
+layout(location = 7) uniform vec3 lightAmbientIntensity;
+layout(location = 8) uniform vec3 lightDiffuseIntensity;
+layout(location = 9) uniform vec3 lightSpecularIntensity; 
 
-uniform vec3 matAmbientReflectance;
-uniform vec3 matDiffuseReflectance;
-uniform vec3 matSpecularReflectance; 
-uniform float matShininess; 
+layout(location = 10) uniform vec3 matAmbientReflectance;
+layout(location = 11) uniform vec3 matDiffuseReflectance;
+layout(location = 12) uniform vec3 matSpecularReflectance; 
+layout(location = 13) uniform float matShininess; 
 
-uniform mat4 ViewMat;
+layout(location = 14) uniform mat4 ViewMat;
 
 uniform sampler2DShadow shadow;
 
 uniform samplerCube cube_texture;
 
-out vec4 color;
+layout(location = 0) out vec4 color;
 
 vec3 ambientLighting()
 {
@@ -51,6 +56,30 @@ vec3 specularLighting(in vec3 N, in vec3 L, in vec3 V)
    return matSpecularReflectance * lightSpecularIntensity * specularTerm;
 }
 
+float CalcShadowFactor(vec4 LightSpacePos)
+{
+    vec3 ProjCoords = LightSpacePos.xyz / LightSpacePos.w;
+    vec2 UVCoords;
+    UVCoords.x = 0.5 * ProjCoords.x + 0.5;
+    UVCoords.y = 0.5 * ProjCoords.y + 0.5;
+    float z = 0.5 * ProjCoords.z + 0.5;
+
+    float xOffset = 1.0/1024;
+    float yOffset = 1.0/1024;
+
+    float Factor = 0.0;
+
+    for (int y = -1 ; y <= 1 ; y++) {
+        for (int x = -1 ; x <= 1 ; x++) {
+            vec2 Offsets = vec2(x * xOffset, y * yOffset);
+            vec3 UVC = vec3(UVCoords + Offsets, z + EPSILON);
+            Factor += texture(shadow, UVC);
+        }
+    }
+
+    return (0.5 + (Factor / 18.0));
+}
+
 void main()
 {
    vec3 L = normalize(i_light);
@@ -67,17 +96,16 @@ void main()
    vec3 Idif = diffuseLighting(N, L);
    vec3 Ispe = specularLighting(N, L, V);
 
-   
    float bias = 0.005;
-   float visibility = textureProj( shadow, i_shadowCoord, bias);
-   if (visibility < i_shadowCoord.z/i_shadowCoord.w)
-	visibility = 0.0f;
+  // float visibility = textureProj( shadow, i_shadowCoord, bias);
+  // if (visibility < i_shadowCoord.z/i_shadowCoord.w)
+	//visibility = 0.0f;
 
+	float visibility = CalcShadowFactor(i_shadowCoord);
    
 	//color = texture2D(texUnitS, i_UV) * texture2D(texUnitD, i_UV) ;
 	//color = texture(cube_texture, R) * texture(texUnitD, i_UV);
-	color = vec4(0.5,0.5,0.5,1) * vec4((Iamb + (visibility*Idif) + (visibility*Ispe)), 1);
+	color = vec4(0.5,0.5,0.5,1) * vec4((Iamb + (visibility*Idif) /*+ (visibility*Ispe)*/), 1);
 	//color.xyz = vec3(visibility);
 	//color.a = 1;
-	//color = texture2D(shadow, i_UV);
 }

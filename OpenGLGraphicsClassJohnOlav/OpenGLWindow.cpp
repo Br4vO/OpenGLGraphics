@@ -656,7 +656,7 @@ void OpenGLWindow::CalculateMVPPlane()
 
 	vertexData->ComputeBoundingBox();
 	cy::Point3f objectSizes = vertexData->GetBoundMax() - vertexData->GetBoundMin();
-	cy::Point3f modelTranslation(0, 0, -(objectSizes.z / 2));
+	cy::Point3f modelTranslation(0, 0, /*-(objectSizes.z / 2)*/0);
 	modelMatrix.SetTrans(modelTranslation);
 
 	cy::Matrix3f MV = viewMatrix.GetSubMatrix3() * modelMatrix.GetSubMatrix3();
@@ -714,7 +714,7 @@ void OpenGLWindow::CalculateMVPBox()
 {
 	cy::Matrix4f projectionMatrix;
 	projectionMatrix.SetIdentity();
-	projectionMatrix.SetPerspective(45.0f, windowWidth / windowHeight, 0.1f, 100.0f);
+	projectionMatrix.SetPerspective(45.0, windowWidth / windowHeight, 0.1f, 1000.0f);
 
 	cy::Matrix4f viewMatrix;
 	viewMatrix.SetIdentity();
@@ -741,7 +741,7 @@ void OpenGLWindow::CalculateMVPShadow()
 {
 	cy::Matrix4f projectionMatrix;
 	projectionMatrix.SetIdentity();
-	projectionMatrix.SetPerspective(45.0f, 1, 2.0f, 100.0f);
+	projectionMatrix.SetPerspective(90.0f, 1, 2.0f, 100.0f);
 
 	cy::Matrix4f lightRotationMatrix;
 	cy::Matrix4f lightTranslationMatrix;
@@ -778,13 +778,14 @@ void OpenGLWindow::CalculateMVPShadow()
 	//g_shaderProgramShadow->SetUniform3("lightPosition", 1, lightPosition.Data());
 
 	cy::Matrix4f biasMatrix(
-		0.5, 0.0, 0.0, 0.0,
-		0.0, 0.5, 0.0, 0.0,
-		0.0, 0.0, 0.5, 0.0,
+		0.5, 0.0, 0.0, 0.5,
+		0.0, 0.5, 0.0, 0.5,
+		0.0, 0.0, 0.5, 0.5,
 		0.5, 0.5, 0.5, 1.0
 	);
 
-	cy::Matrix4f depthBiasMVP = /*biasMatrix */ projectionMatrix * viewMatrix;
+	cy::Matrix4f depthBiasMVP =  MVP;
+	//cy::Matrix4f depthBiasMVP = biasMatrix * MVP;
 	g_shaderProgram->Bind();
 	g_shaderProgram->SetUniformMatrix4("DepthBiasMVP", depthBiasMVP.data);
 

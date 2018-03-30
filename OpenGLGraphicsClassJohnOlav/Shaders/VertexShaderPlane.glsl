@@ -1,4 +1,6 @@
-#version 420
+#version 440
+#extension GL_ARB_separate_shader_objects : enable
+#extension GL_ARB_explicit_attrib_location : require
 
 layout(location = 0) in vec3 vertexPosition_modelspace;
 layout(location = 1) in vec3 vertexNormal;
@@ -14,16 +16,16 @@ layout(location = 5) out vec3 n_eye;
 
 layout(location = 6) out vec4 o_shadowCoord;
 
-uniform mat4 MVP;
-uniform mat3 MV;
+layout(location = 0) uniform mat4 MVP;
+layout(location = 1) uniform mat3 MV;
 
-uniform mat4 ModelMat;
-uniform mat4 ViewMat;
-uniform mat4 ProjMat;
-uniform mat4 DepthBiasMVP;
+layout(location = 2) uniform mat4 ModelMat;
+layout(location = 14) uniform mat4 ViewMat;
+layout(location = 3) uniform mat4 ProjMat;
+layout(location = 4) uniform mat4 DepthBiasMVP;
 
-uniform vec3 lightPosition;
-uniform vec3 cameraPosition;
+layout(location = 5) uniform vec3 lightPosition;
+layout(location = 6) uniform vec3 cameraPosition;
 
 void main()
 {
