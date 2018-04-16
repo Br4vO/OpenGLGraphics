@@ -1,9 +1,10 @@
 #version 440
+
+
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_explicit_attrib_location : require
 
-
-#define EPSILON 0.00001
+#define EPSILON 0.0001
 
 layout(location = 0) in vec3 i_normal;
 layout(location = 1) in vec3 i_light;
@@ -26,10 +27,9 @@ layout(location = 13) uniform float matShininess;
 
 layout(location = 14) uniform mat4 ViewMat;
 
-//uniform sampler2D texUnitD;
-//uniform sampler2D texUnitS;
-
 uniform sampler2DShadow shadow;
+
+uniform samplerCube cube_texture;
 
 layout(location = 0) out vec4 color;
 
@@ -38,13 +38,13 @@ vec3 ambientLighting()
    return matAmbientReflectance * lightAmbientIntensity;
 }
 
-vec3 diffuseLighting(in vec3 N, in vec3 L)
+vec3 diffuseLighting(vec3 N, vec3 L)
 {
    float diffuseTerm = clamp(dot(N, L), 0, 1) ;
    return matDiffuseReflectance * lightDiffuseIntensity * diffuseTerm;
 }
 
-vec3 specularLighting(in vec3 N, in vec3 L, in vec3 V)
+vec3 specularLighting(vec3 N, vec3 L, vec3 V)
 {
    float specularTerm = 0;
    if(dot(N, L) > 0)
@@ -52,8 +52,10 @@ vec3 specularLighting(in vec3 N, in vec3 L, in vec3 V)
       // half vector
       vec3 H = normalize(L + V);
       specularTerm = pow(clamp(dot(N, H), 0, 1), matShininess);
+	  //specularTerm = pow(1, matShininess);
    }
    return matSpecularReflectance * lightSpecularIntensity * specularTerm;
+  // return vec3(specularTerm);
 }
 
 float CalcShadowFactor(vec4 LightSpacePos)
@@ -64,17 +66,52 @@ float CalcShadowFactor(vec4 LightSpacePos)
     UVCoords.y = 0.5 * ProjCoords.y + 0.5;
     float z = 0.5 * ProjCoords.z + 0.5;
 
-    float xOffset = 1.0/1024;
-    float yOffset = 1.0/1024;
+    float xOffset = 1.0/2048;
+    float yOffset = 1.0/2048;
 
     float Factor = 0.0;
 	int nrOfSampling = 0;
+	int widthSampling = 3;
 
-    for (int y = -1; y <= 1; y++) {
-        for (int x = -1; x <= 1; x++) {
+
+    for (int y = -widthSampling; y <= widthSampling; y++) {
+        for (int x = -widthSampling; x <= widthSampling; x++) 
+		{
+
+			float current;
+			{
+				vec2 Offsets = vec2(x * xOffset, y * yOffset);
+				vec3 UVC = vec3(UVCoords + Offsets, z);
+				current = texture(shadow, UVC);
+			}
+
+			float fX;
+			{
+				vec2 Offsets = vec2((x+1) * xOffset, y * yOffset);
+				vec3 UVC = vec3(UVCoords + Offsets, z);
+				fX = texture(shadow, UVC);
+			}
+
+			float fY;
+			{
+				vec2 Offsets = vec2(x * xOffset, (y+1) * yOffset);
+				vec3 UVC = vec3(UVCoords + Offsets, z);
+				fY = texture(shadow, UVC);
+			}
+
+			float biasX = fX - current;
+			float biasY = fY - current;
+
             vec2 Offsets = vec2(x * xOffset, y * yOffset);
-            vec3 UVC = vec3(UVCoords + Offsets, z + EPSILON);
-            Factor += texture(shadow, UVC);
+			float bias = (biasX ) + (biasY) /2;
+            vec3 UVC = vec3(UVCoords + Offsets, z );
+
+			float test = texture(shadow, UVC);
+
+			if (test < 1)
+				Factor += 0;
+			else
+				Factor += 0.2;
 			nrOfSampling ++;
         }
     }
@@ -105,10 +142,14 @@ void main()
 
 	float visibility = CalcShadowFactor(i_shadowCoord);
 
+	//if (visibility < 1)
+	//	visibility = 0;
    
 	//color = texture2D(texUnitS, i_UV) * texture2D(texUnitD, i_UV) ;
-	//color = texture(cube_texture, R) * vec4((Iamb + Idif + Ispe), 1);
+	//color = texture(cube_texture, R) * texture(texUnitD, i_UV);
 	color = vec4(0.5,0.5,0.5,1) * vec4((Iamb + (visibility*Idif) + (visibility*Ispe)), 1);
+	//color = vec4(Ispe, 1);
+	//color = vec4(0.5 * normalize(L + V) + 0.5, 1);
 	//color.xyz = vec3(visibility);
 	//color.a = 1;
 }

@@ -41,7 +41,7 @@ static cy::GLRenderDepth2D* g_shadowTexture;
 static cy::GLTextureCubeMap cubeMap;
 
 static const cy::Point3f ligthRotationAngle(0, 1, 0);
-static const cy::Point3f lightPosition(5, 20, 20);
+static const cy::Point3f lightPosition(2, 30, 30);
 
 
 static GLuint MatrixID;
@@ -90,6 +90,7 @@ void OpenGLWindow::Init(const char * filename)
 	glutIdleFunc(Idle);
 
 	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_CULL_FACE);
 
 	vertexData = new cyTriMesh();
 
@@ -101,7 +102,9 @@ void OpenGLWindow::Init(const char * filename)
 	g_renderTexture->SetTextureMaxAnisotropy();
 	g_renderTexture->BuildTextureMipmaps();
 
-	g_shadowTexture->Initialize(true, 1024,1024);
+	g_shadowTexture->Initialize(true, 2048, 2048);
+	g_shadowTexture->BuildTextureMipmaps();
+	g_shadowTexture->SetTextureMaxAnisotropy();
 
 	matrixPointer = new float[16];
 
@@ -539,6 +542,9 @@ bool OpenGLWindow::LoadAndBuildShaders()
 
 void OpenGLWindow::CalculateMVPTeapot(bool i_camera)
 {
+
+
+
 	cy::Matrix4f projectionMatrix;
 	projectionMatrix.SetIdentity();
 	projectionMatrix.SetPerspective(45.0f, windowWidth / windowHeight, 0.1f, 1000.0f);
@@ -560,8 +566,15 @@ void OpenGLWindow::CalculateMVPTeapot(bool i_camera)
 	cy::Point3f secondRotationAxis(0, 1, 0);
 	secondRotationMatrix.SetRotation(secondRotationAxis, mouseXTeapot);
 
-	viewMatrix =  positionMatrix * rotationMatrix * secondRotationMatrix;
+	viewMatrix = positionMatrix * rotationMatrix * secondRotationMatrix;
 
+	cy::Matrix4f modelMatrix;
+	modelMatrix.SetIdentity();
+
+	vertexData->ComputeBoundingBox();
+	cy::Point3f objectSizes = vertexData->GetBoundMax() - vertexData->GetBoundMin();
+	cy::Point3f modelTranslation(0, 0, /*-(objectSizes.z / 2)*/0);
+	modelMatrix.SetTrans(modelTranslation);
 	cy::Matrix4f lightRotationMatrix;
 	cy::Matrix4f lightTranslationMatrix;
 	lightTranslationMatrix.SetIdentity();
@@ -573,19 +586,11 @@ void OpenGLWindow::CalculateMVPTeapot(bool i_camera)
 	cy::Matrix4f lightMatrix = lightRotationMatrix * lightTranslationMatrix;
 	cy::Point3f lPosition = lightMatrix.GetTrans();
 
-	cy::Matrix4f modelMatrix;
-	modelMatrix.SetIdentity();
-
-	vertexData->ComputeBoundingBox();
-	cy::Point3f objectSizes = vertexData->GetBoundMax() - vertexData->GetBoundMin();
-
-	cy::Point3f modelTranslation(0, 0, 0/*-(objectSizes.z / 2)*/);
+	lightMatrix.SetView(lPosition, cy::Point3f(0, 0, -10), cy::Point3f(0, 1, 0));
 	if (i_camera)
 	{
 		modelTranslation = lPosition;
 	}
-
-	modelMatrix.SetTrans(modelTranslation);
 
 	cy::Matrix3f MV = viewMatrix.GetSubMatrix3() * modelMatrix.GetSubMatrix3();
 
@@ -595,35 +600,36 @@ void OpenGLWindow::CalculateMVPTeapot(bool i_camera)
 	cy::Matrix4f MVP = projectionMatrix * viewMatrix * modelMatrix;
 
 
-	g_shaderProgram->Bind();
-	g_shaderProgram->SetUniformMatrix4("MVP", MVP.data);
-	g_shaderProgram->SetUniformMatrix3("MV", MV.data);
+	g_shaderProgramPlane->Bind();
+	g_shaderProgramPlane->SetUniformMatrix4("MVP", MVP.data);
+	g_shaderProgramPlane->SetUniformMatrix3("MV", MV.data);
 
-	g_shaderProgram->SetUniformMatrix4("ModelMat", modelMatrix.data);
-	g_shaderProgram->SetUniformMatrix4("ViewMat", viewMatrix.data);
-	g_shaderProgram->SetUniformMatrix4("ProjMat", projectionMatrix.data);
+	g_shaderProgramPlane->SetUniformMatrix4("ModelMat", modelMatrix.data);
+	g_shaderProgramPlane->SetUniformMatrix4("ViewMat", viewMatrix.data);
+	g_shaderProgramPlane->SetUniformMatrix4("ProjMat", projectionMatrix.data);
 
 
-	g_shaderProgram->SetUniform3("lightPosition", 1, lPosition.Data());
-	g_shaderProgram->SetUniform3("cameraPosition", 1, position.Data());
 
-	cy::Point3f lightAmbientInt(2, 2, 2);
-	cy::Point3f lightDiffuseInt(2, 2, 2);
-	cy::Point3f lightSpecularInt(2, 2,2);
+	g_shaderProgramPlane->SetUniform3("lightPosition", 1, lPosition.Data());
+	g_shaderProgramPlane->SetUniform3("cameraPosition", 1, position.Data());
 
-	g_shaderProgram->SetUniform3("lightAmbientIntensity", 1, lightAmbientInt.Data());
-	g_shaderProgram->SetUniform3("lightDiffuseIntensity", 1, lightDiffuseInt.Data());
-	g_shaderProgram->SetUniform3("lightSpecularIntensity", 1, lightSpecularInt.Data());
+	cy::Point3f lightAmbientInt(1, 1, 1);
+	cy::Point3f lightDiffuseInt(1, 1, 1);
+	cy::Point3f lightSpecularInt(1, 1, 1);
 
-	cy::Point3f matAmbientReflect(0.5, 0.5, 0.5 );
-	cy::Point3f matDiffuseReflect(0.5, 0.5, 0.5 );
+	g_shaderProgramPlane->SetUniform3("lightAmbientIntensity", 1, lightAmbientInt.Data());
+	g_shaderProgramPlane->SetUniform3("lightDiffuseIntensity", 1, lightDiffuseInt.Data());
+	g_shaderProgramPlane->SetUniform3("lightSpecularIntensity", 1, lightSpecularInt.Data());
+
+	cy::Point3f matAmbientReflect(0.5, 0.5, 0.5);
+	cy::Point3f matDiffuseReflect(0.5, 0.5, 0.5);
 	cy::Point3f matSpecularReflect(0.5, 0.5, 0.5);
 
-	g_shaderProgram->SetUniform3("matAmbientReflectance", 1, matAmbientReflect.Data());
-	g_shaderProgram->SetUniform3("matDiffuseReflectance", 1, matDiffuseReflect.Data());
-	g_shaderProgram->SetUniform3("matSpecularReflectance", 1, matSpecularReflect.Data());
+	g_shaderProgramPlane->SetUniform3("matAmbientReflectance", 1, matAmbientReflect.Data());
+	g_shaderProgramPlane->SetUniform3("matDiffuseReflectance", 1, matDiffuseReflect.Data());
+	g_shaderProgramPlane->SetUniform3("matSpecularReflectance", 1, matSpecularReflect.Data());
 
-	g_shaderProgram->SetUniform("matShininess", 32.0f);
+	g_shaderProgramPlane->SetUniform("matShininess", 64.0f);
 }
 
 void OpenGLWindow::CalculateMVPPlane()
@@ -817,6 +823,7 @@ void OpenGLWindow::Display()
 
 
 	{
+		glCullFace(GL_FRONT);
 		g_shadowTexture->Bind();
 		glClearDepth(1.0);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -829,10 +836,11 @@ void OpenGLWindow::Display()
 		glDrawArrays(GL_TRIANGLES, 0, nrOfVertices);
 
 		g_shadowTexture->Unbind();
+		glCullFace(GL_BACK);
 	}
 
 	{
-		g_shaderProgram->Bind();
+		g_shaderProgramPlane->Bind();
 		CalculateMVPTeapot(false);
 		glBindVertexArray(g_vertexArrayID);
 
@@ -844,7 +852,7 @@ void OpenGLWindow::Display()
 	}
 
 	{
-		g_shaderProgram->Bind();
+		g_shaderProgramPlane->Bind();
 		CalculateMVPTeapot(true);
 		glBindVertexArray(g_vertexArrayID);
 

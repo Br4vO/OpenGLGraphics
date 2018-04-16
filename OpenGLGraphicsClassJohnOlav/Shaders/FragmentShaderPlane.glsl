@@ -4,7 +4,7 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_explicit_attrib_location : require
 
-#define EPSILON 0.00001
+#define EPSILON 0.0001
 
 layout(location = 0) in vec3 i_normal;
 layout(location = 1) in vec3 i_light;
@@ -66,16 +66,45 @@ float CalcShadowFactor(vec4 LightSpacePos)
     UVCoords.y = 0.5 * ProjCoords.y + 0.5;
     float z = 0.5 * ProjCoords.z + 0.5;
 
-    float xOffset = 1.0/1024;
-    float yOffset = 1.0/1024;
+    float xOffset = 1.0/2048;
+    float yOffset = 1.0/2048;
 
     float Factor = 0.0;
 	int nrOfSampling = 0;
+	int widthSampling = 3;
 
-    for (int y = -1; y <= 1; y++) {
-        for (int x = -1; x <= 1; x++) {
+
+    for (int y = -widthSampling; y <= widthSampling; y++) {
+        for (int x = -widthSampling; x <= widthSampling; x++) 
+		{
+
+			float current;
+			{
+				vec2 Offsets = vec2(x * xOffset, y * yOffset);
+				vec3 UVC = vec3(UVCoords + Offsets, z);
+				current = texture(shadow, UVC);
+			}
+
+			float fX;
+			{
+				vec2 Offsets = vec2((x+1) * xOffset, y * yOffset);
+				vec3 UVC = vec3(UVCoords + Offsets, z);
+				fX = texture(shadow, UVC);
+			}
+
+			float fY;
+			{
+				vec2 Offsets = vec2(x * xOffset, (y+1) * yOffset);
+				vec3 UVC = vec3(UVCoords + Offsets, z);
+				fY = texture(shadow, UVC);
+			}
+
+			float biasX = fX - current;
+			float biasY = fY - current;
+
             vec2 Offsets = vec2(x * xOffset, y * yOffset);
-            vec3 UVC = vec3(UVCoords + Offsets, z + EPSILON);
+			float bias = (biasX) + (biasY);
+            vec3 UVC = vec3(UVCoords + Offsets, z - bias);
             Factor += texture(shadow, UVC);
 			nrOfSampling ++;
         }
