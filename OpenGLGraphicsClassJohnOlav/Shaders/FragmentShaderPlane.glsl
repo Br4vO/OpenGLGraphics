@@ -81,21 +81,21 @@ float CalcShadowFactor(vec4 LightSpacePos)
 			float current;
 			{
 				vec2 Offsets = vec2(x * xOffset, y * yOffset);
-				vec3 UVC = vec3(UVCoords + Offsets, z);
+				vec3 UVC = vec3(UVCoords + Offsets, z- EPSILON);
 				current = texture(shadow, UVC);
 			}
 
 			float fX;
 			{
 				vec2 Offsets = vec2((x+1) * xOffset, y * yOffset);
-				vec3 UVC = vec3(UVCoords + Offsets, z);
+				vec3 UVC = vec3(UVCoords + Offsets, z- EPSILON);
 				fX = texture(shadow, UVC);
 			}
 
 			float fY;
 			{
 				vec2 Offsets = vec2(x * xOffset, (y+1) * yOffset);
-				vec3 UVC = vec3(UVCoords + Offsets, z);
+				vec3 UVC = vec3(UVCoords + Offsets, z- EPSILON);
 				fY = texture(shadow, UVC);
 			}
 

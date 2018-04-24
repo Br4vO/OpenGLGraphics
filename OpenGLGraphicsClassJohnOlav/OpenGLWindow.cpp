@@ -398,109 +398,109 @@ bool OpenGLWindow::GenerateBox()
 	std::vector<unsigned char> negXBuffer;
 	unsigned negxWidth, negxHeight;
 	{
-		std::string negXName(textureFolder);
+		//std::string negXName(textureFolder);
 
-		negXName += negxTextureName;
+		//negXName += negxTextureName;
 
-		auto errorNumber = lodepng::decode(negXBuffer, negxWidth, negxHeight, negXName, LodePNGColorType::LCT_RGB);
-		const char * errorMessage;
-		if (errorNumber != 0)
-			errorMessage = lodepng_error_text(errorNumber);
+		//auto errorNumber = lodepng::decode(negXBuffer, negxWidth, negxHeight, negXName, LodePNGColorType::LCT_RGB);
+		//const char * errorMessage;
+		//if (errorNumber != 0)
+		//	errorMessage = lodepng_error_text(errorNumber);
 	}
 
 	std::vector<unsigned char> negYBuffer;
 	unsigned negyWidth, negyHeight;
 	{
-		std::string negyName(textureFolder);
+		//std::string negyName(textureFolder);
 
-		negyName += negyTextureName;
+		//negyName += negyTextureName;
 
-		auto errorNumber = lodepng::decode(negYBuffer, negyWidth, negyHeight, negyName, LodePNGColorType::LCT_RGB);
-		const char * errorMessage;
-		if (errorNumber != 0)
-			errorMessage = lodepng_error_text(errorNumber);
+		//auto errorNumber = lodepng::decode(negYBuffer, negyWidth, negyHeight, negyName, LodePNGColorType::LCT_RGB);
+		//const char * errorMessage;
+		//if (errorNumber != 0)
+		//	errorMessage = lodepng_error_text(errorNumber);
 	}
 
 	std::vector<unsigned char> negzBuffer;
 	unsigned negzWidth, negzHeight;
 	{
-		std::string negzName(textureFolder);
+		//std::string negzName(textureFolder);
 
-		negzName += negzTextureName;
+		//negzName += negzTextureName;
 
-		auto errorNumber = lodepng::decode(negzBuffer, negzWidth, negzHeight, negzName, LodePNGColorType::LCT_RGB);
-		const char * errorMessage;
-		if (errorNumber != 0)
-			errorMessage = lodepng_error_text(errorNumber);
+		//auto errorNumber = lodepng::decode(negzBuffer, negzWidth, negzHeight, negzName, LodePNGColorType::LCT_RGB);
+		//const char * errorMessage;
+		//if (errorNumber != 0)
+		//	errorMessage = lodepng_error_text(errorNumber);
 	}
 
 	std::vector<unsigned char> posXBuffer;
 	unsigned posxWidth, posxHeight;
 	{
-		std::string posXName(textureFolder);
+		//std::string posXName(textureFolder);
 
-		posXName += posxTextureName;
+		//posXName += posxTextureName;
 
-		auto errorNumber = lodepng::decode(posXBuffer, posxWidth, posxHeight, posXName, LodePNGColorType::LCT_RGB);
-		const char * errorMessage;
-		if (errorNumber != 0)
-			errorMessage = lodepng_error_text(errorNumber);
+		//auto errorNumber = lodepng::decode(posXBuffer, posxWidth, posxHeight, posXName, LodePNGColorType::LCT_RGB);
+		//const char * errorMessage;
+		//if (errorNumber != 0)
+		//	errorMessage = lodepng_error_text(errorNumber);
 	}
 
 	std::vector<unsigned char> posYBuffer;
 	unsigned posyWidth, posyHeight;
 	{
-		std::string posyName(textureFolder);
+		//std::string posyName(textureFolder);
 
-		posyName += posyTextureName;
+		//posyName += posyTextureName;
 
-		auto errorNumber = lodepng::decode(posYBuffer, posyWidth, posyHeight, posyName, LodePNGColorType::LCT_RGB);
-		const char * errorMessage;
-		if (errorNumber != 0)
-			errorMessage = lodepng_error_text(errorNumber);
+		//auto errorNumber = lodepng::decode(posYBuffer, posyWidth, posyHeight, posyName, LodePNGColorType::LCT_RGB);
+		//const char * errorMessage;
+		//if (errorNumber != 0)
+		//	errorMessage = lodepng_error_text(errorNumber);
 	}
 
 	std::vector<unsigned char> poszBuffer;
 	unsigned poszWidth, poszHeight;
 	{
-		std::string poszName(textureFolder);
+		//std::string poszName(textureFolder);
 
-		poszName += poszTextureName;
+		//poszName += poszTextureName;
 
-		auto errorNumber = lodepng::decode(poszBuffer, poszWidth, poszHeight, poszName, LodePNGColorType::LCT_RGB);
-		const char * errorMessage;
-		if (errorNumber != 0)
-			errorMessage = lodepng_error_text(errorNumber);
+		//auto errorNumber = lodepng::decode(poszBuffer, poszWidth, poszHeight, poszName, LodePNGColorType::LCT_RGB);
+		//const char * errorMessage;
+		//if (errorNumber != 0)
+		//	errorMessage = lodepng_error_text(errorNumber);
 	}
 
-	cubeMap.Initialize();
-	cubeMap.SetImage(cy::GLTextureCubeMap::NEGATIVE_X, negXBuffer.data(), 3, negxWidth, negxHeight);
-	cubeMap.SetImage(cy::GLTextureCubeMap::NEGATIVE_Y, negYBuffer.data(), 3, negyWidth, negyHeight);
-	cubeMap.SetImage(cy::GLTextureCubeMap::NEGATIVE_Z, negzBuffer.data(), 3, negzWidth, negzHeight);
-	cubeMap.SetImage(cy::GLTextureCubeMap::POSITIVE_X, posXBuffer.data(), 3, posxWidth, posxHeight);
-	cubeMap.SetImage(cy::GLTextureCubeMap::POSITIVE_Y, posYBuffer.data(), 3, posyWidth, posyHeight);
-	cubeMap.SetImage(cy::GLTextureCubeMap::POSITIVE_Z, poszBuffer.data(), 3, poszWidth, poszHeight);
+	//cubeMap.Initialize();
+	//cubeMap.SetImage(cy::GLTextureCubeMap::NEGATIVE_X, negXBuffer.data(), 3, negxWidth, negxHeight);
+	//cubeMap.SetImage(cy::GLTextureCubeMap::NEGATIVE_Y, negYBuffer.data(), 3, negyWidth, negyHeight);
+	//cubeMap.SetImage(cy::GLTextureCubeMap::NEGATIVE_Z, negzBuffer.data(), 3, negzWidth, negzHeight);
+	//cubeMap.SetImage(cy::GLTextureCubeMap::POSITIVE_X, posXBuffer.data(), 3, posxWidth, posxHeight);
+	//cubeMap.SetImage(cy::GLTextureCubeMap::POSITIVE_Y, posYBuffer.data(), 3, posyWidth, posyHeight);
+	//cubeMap.SetImage(cy::GLTextureCubeMap::POSITIVE_Z, poszBuffer.data(), 3, poszWidth, poszHeight);
 
-	cubeMap.BuildMipmaps();
+	//cubeMap.BuildMipmaps();
 
-	glGenVertexArrays(1, &g_vertexArrayBoxID);
-	glBindVertexArray(g_vertexArrayBoxID);
+	//glGenVertexArrays(1, &g_vertexArrayBoxID);
+	//glBindVertexArray(g_vertexArrayBoxID);
 
-	// Generate 1 buffer, put the resulting identifier in vertexbuffer
-	glGenBuffers(1, &g_boxVertexBuffer);
-	// The following commands will talk about our 'vertexbuffer' buffer
-	glBindBuffer(GL_ARRAY_BUFFER, g_boxVertexBuffer);
-	// Give our vertices to OpenGL.
-	glBufferData(GL_ARRAY_BUFFER, vertexBufferSize, vertexDataBuffer.data(), GL_STATIC_DRAW);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(
-		0,
-		3,                  // size
-		GL_FLOAT,           // type
-		GL_FALSE,           // normalized?
-		sizeof(cy::Point3f),    // stride
-		(void*)0            // array buffer offset
-	);
+	//// Generate 1 buffer, put the resulting identifier in vertexbuffer
+	//glGenBuffers(1, &g_boxVertexBuffer);
+	//// The following commands will talk about our 'vertexbuffer' buffer
+	//glBindBuffer(GL_ARRAY_BUFFER, g_boxVertexBuffer);
+	//// Give our vertices to OpenGL.
+	//glBufferData(GL_ARRAY_BUFFER, vertexBufferSize, vertexDataBuffer.data(), GL_STATIC_DRAW);
+	//glEnableVertexAttribArray(0);
+	//glVertexAttribPointer(
+	//	0,
+	//	3,                  // size
+	//	GL_FLOAT,           // type
+	//	GL_FALSE,           // normalized?
+	//	sizeof(cy::Point3f),    // stride
+	//	(void*)0            // array buffer offset
+	//);
 
 	return true;
 }
